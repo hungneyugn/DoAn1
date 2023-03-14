@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "author": "nguyễn phi hùng",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 15.63, "left": -42.77, "attrs": {} },
+    {
+      "type": "wokwi-membrane-keypad",
+      "id": "keypad1",
+      "top": 170.15,
+      "left": 155.1,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd1",
+      "top": -59.05,
+      "left": 159.96,
+      "attrs": { "pins": "i2c" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:D32", "keypad1:R3", "green", [ "h-79.26", "v466.6", "h395.93" ] ],
+    [ "esp:D33", "keypad1:R4", "green", [ "h-92.76", "v473.14", "h418.64" ] ],
+    [ "esp:D25", "keypad1:C1", "green", [ "h-103.5", "v469.98", "h439.04" ] ],
+    [ "esp:D26", "keypad1:C2", "green", [ "h-116.38", "v472.08", "h454.07" ] ],
+    [ "esp:D27", "keypad1:C3", "green", [ "h-128.18", "v468.72", "h480.9" ] ],
+    [ "esp:D2", "keypad1:C4", "green", [ "h45.73", "v458.59", "h224.41" ] ],
+    [ "esp:D19", "keypad1:R1", "green", [ "h33.15", "v435.64", "h161.49" ] ],
+    [ "esp:D18", "keypad1:R2", "green", [ "h18.99", "v428.98", "h188.4", "v-2.83" ] ],
+    [ "lcd1:GND", "esp:GND.1", "black", [ "h-40.63", "v196.45" ] ],
+    [ "lcd1:VCC", "esp:VIN", "red", [ "h-227.6", "v191.14" ] ],
+    [ "lcd1:SDA", "esp:D21", "green", [ "h-69.46", "v83.58" ] ],
+    [ "lcd1:SCL", "esp:D22", "green", [ "h-81.31", "v49.72" ] ]
+  ],
+  "dependencies": {}
+}
