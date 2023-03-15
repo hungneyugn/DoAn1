@@ -40,8 +40,8 @@ void turn_On_OFF()
   }
 }
 
-//int cursorColumn = 4;
-void setup() {
+void setup() 
+{
   Serial.begin(9600);
 }
 void menu(char key)             //mainscreen
@@ -97,6 +97,16 @@ void thongBao(char* thongbao)   // Hien thi thong bao
   lcd.setCursor(0,0);
   lcd.print(thongbao);
 }
+void delect(int i)
+{
+  if(i>=0 && i<=6)
+  {
+    lcd.setCursor(i+4,1);
+    lcd.print(" ");
+    Serial.print(i);
+    lcd.setCursor(i+4,1);
+  }
+}
 void enterpass()                //nhap mat khau
 {
  char a[7] ="" ;
@@ -112,11 +122,16 @@ void enterpass()                //nhap mat khau
   {
     char key = keypad.getKey();
     a[i]=key;
-    if (a[i]) 
+    if(a[i] == '#')
+    {
+      Serial.print(i);
+      delect(i);
+      i--;
+    }
+    else if (a[i]) 
     {
       lcd.print(a[i]);
       i++;
-      //Serial.println(a);
     }
   }
   lcd.noBlink();
@@ -138,6 +153,7 @@ void finger()
 {
 
 }
+
 void loop() {
   char key = keypad.getKey();
   if(key == 'A')
