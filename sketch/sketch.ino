@@ -3,10 +3,12 @@
 #include<string.h>
 #include <EEPROM.h>
 #include <setjmp.h>
-#define EEPROM_SIZE 6
+//so byte eeprom luu
+#define EEPROM_SIZE 255
 #define relay 2
 jmp_buf buf;
 
+//Setup keypad 4x4
 #define ROW_NUM     4 // four rows
 #define COLUMN_NUM  4 // four columns
 char keys[ROW_NUM][COLUMN_NUM] = 
@@ -20,11 +22,12 @@ char keys[ROW_NUM][COLUMN_NUM] =
 byte pin_rows[ROW_NUM]      = {12,14,32,33}; 
 byte pin_column[COLUMN_NUM] = {25,26,27,4};   
 Keypad keypad = Keypad( makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_NUM );
+//Setup lcd
 LiquidCrystal_I2C lcd(0x27,16,2);
 uint8_t choice =1;
-bool state = 0;
-char pass1[7]="";
-void turn_On_OFF()
+bool state = 0;                 // trang thai lcd | 0: off ; 1: on
+char pass1[7]="";               // pass doc tu eeprom
+void turn_On_OFF()              //bat tat lcd 
 {
   state =!state;
   Serial.println(state);
@@ -105,17 +108,13 @@ void choose(uint8_t choice)     //choose function
               break;      
   }
 }
-void mocua()                    // open cabinit
-{
-  
-}
 void thongBao(char* thongbao)   // Hien thi thong bao
 {
   lcd.clear();
   lcd.setCursor(1,0);
   lcd.print(thongbao);
 }
-void delect(int i)
+void delect(int i)              // xoa ki tu khi nhap mat khau
 {
   if(i>=0 && i<=6)
   {
@@ -125,7 +124,7 @@ void delect(int i)
     lcd.setCursor(i+4,1);
   }
 }
-void savepass(char pass[])
+void savepass(char pass[])      // luu mat khau vao eeprom
 {
    for(int i =0 ; i<6;i++)
   {
@@ -133,18 +132,18 @@ void savepass(char pass[])
     EEPROM.commit();
   }
 }
-void readpass(char a[])
+void readpass(char a[])         // doc mat khau tu eeprom
 {
   for(int i =0 ; i<6;i++)
   {
     a[i] = EEPROM.read(i);
   }
 }
-void open_cabinet()
+void open_cabinet()             // mo tu
 {
   digitalWrite(relay,HIGH);
 }
-void close_cabinet()
+void close_cabinet()            // dong tu
 {
   digitalWrite(relay,LOW);
 }
@@ -189,6 +188,9 @@ void enterpass()                //nhap mat khau
   {
     open_cabinet();
     thongBao((char*)"CABINET IS OPEN");
+    delay(3000);
+    close_cabinet();
+    longjmp(buf,1);
   }else
   {
     thongBao((char*)"WRONG PASSWORD");
@@ -196,7 +198,7 @@ void enterpass()                //nhap mat khau
     goto again;
   }
 }
-void scanID()
+void scanID()                   // scan id card
 {
   char key = keypad.getKey();
   lcd.clear();
@@ -205,11 +207,9 @@ void scanID()
   lcd.setCursor(5,1);
   if(key == '*') longjmp(buf,1);
 }
-void finger()
+void finger()                   // quet van tay
 {
-
 }
-
 void loop() {
   char key = keypad.getKey();
   if(key == 'A')
