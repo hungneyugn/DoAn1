@@ -77,11 +77,12 @@ void delect(int i)              // xoa ki tu khi nhap mat khau
     lcd.setCursor(i+4,1);
   }
 }
-void savepass(char pass[])      // luu mat khau vao eeprom
+void savepass(char a[])      // luu mat khau vao eeprom
 {
    for(int i = 0 ; i<6;i++)
   {
-    EEPROM.write(i+1,pass[i]);
+    pass[i] = a[i];
+    EEPROM.write(i+1,a[i]);
     EEPROM.commit();
   }
 }
@@ -330,10 +331,43 @@ void choose_MasterMenu(uint8_t choice)     //choose function
 }
 void changePass()
 {
+  char a[7] ="" ;
+  int i =0;
   lcd.clear();
   lcd.setCursor(2,0);
   lcd.print("NEW PASSWORD");
-  
+  lcd.setCursor(5,1);
+  lcd.blink();
+  while(i<7)
+  {
+    char key = keypad.getKey();
+    if(key == '#')
+    {
+      Serial.print(i);
+      delect(i);
+      i--;
+      if(i < 0)i=0;
+    }
+    else if(key == 'D' && i == 6)
+    { 
+        i++;
+    }
+    else if(key == '*')
+    {
+      master_Menu(1);
+    }
+    else if (key && key!='A'&& key!='B'&& key!='C'&& key!='D'&& i<6 ) 
+    {
+      a[i]=key;
+      Serial.println(i);
+      lcd.print(a[i]);
+      i++;
+    }
+  } 
+  savepass(a);
+  thongBao((char*)"PASSWORD CHANGED");
+  delay(2000);
+  master_Menu(1); 
 }
 void changeID()
 {
