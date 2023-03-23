@@ -8,8 +8,8 @@
 //so byte eeprom luu
 #define EEPROM_SIZE 200
 #define relay 2
-jmp_buf buf;
-jmp_buf buf3;
+jmp_buf buf2;  // return main menu
+jmp_buf buf3;  // return 
 
 //Setup keypad 4x4
 #define ROW_NUM     4 // four rows
@@ -29,6 +29,7 @@ Keypad keypad = Keypad( makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_
 LiquidCrystal_I2C lcd(0x27,16,2);
 uint8_t choiceMainMenu =1;
 uint8_t choiceMasterMenu =1;
+uint8_t choiceChangeID =1;
 bool state = 0;                 // trang thai lcd | 0: off ; 1: on
 char pass[7]="";               // pass doc tu eeprom
 
@@ -47,7 +48,7 @@ void turn_On_OFF()              //bat tat lcd
   Serial.println(state);
   int again2;
   choiceMainMenu =1;
-  again2 = setjmp(buf);
+  again2 = setjmp(buf2);
   if(state == 1)
   {
     // //turn on lcd
@@ -101,7 +102,7 @@ void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t),uint8
     turn_On_OFF();
   } 
   else if((key == 'B'&& state == 1)||(key == 'C'&& state == 1))typeMenu(key);
-  else if(key =='D')choose_menu(choice);
+  else if(key =='D'&& state == 1)choose_menu(choice);
 }
 //-------------------------HAM MAIN MENU------------------------------------------
 void main_Menu(char key)             //mainscreen
@@ -221,7 +222,7 @@ void enterpass()                //Chuc nang 1: nhap mat khau
     }
     else if(key == '*')
     {
-      longjmp(buf,1);
+      longjmp(buf2,1);
     }
     else if (key && key!='A'&& key!='B'&& key!='C'&& key!='D'&& i<6 ) 
     {
@@ -238,7 +239,7 @@ void enterpass()                //Chuc nang 1: nhap mat khau
     thongBao((char*)"CABINET IS OPEN");
     delay(3000);
     close_cabinet();
-    longjmp(buf,1);
+    longjmp(buf2,1);
   }else
   {
     thongBao((char*)"WRONG PASSWORD");
@@ -260,7 +261,7 @@ void scanID()                   //Chuc nang 2: scan id card
     read_Id_Card(idCard);
     key = keypad.getKey(); 
   }
-  if(key == '*') longjmp(buf,1);
+  if(key == '*') longjmp(buf2,1);
   else if(key =='A')
   {
     turn_On_OFF();
@@ -279,7 +280,8 @@ void scanID()                   //Chuc nang 2: scan id card
       key = keypad.getKey(); 
       Handle_Key(key,&master_Menu,&choose_MasterMenu,choiceMasterMenu);
     }
-    if(key == '*') longjmp(buf,1);
+    choiceMasterMenu = 1;
+    if(key == '*') longjmp(buf2,1);
     else if(key =='A') longjmp(buf3,1);
   }  
 }
@@ -287,7 +289,7 @@ void finger()                   //Chuc nang 3: quet van tay
 {
 }
 //-----------------------HAM MASTER MENU-----------------------------------------
-void master_Menu(char key)
+void master_Menu(char key)    
 {
   if(key == 'B')choiceMasterMenu -=1;
   else if (key == 'C')choiceMasterMenu += 1;
@@ -323,7 +325,7 @@ void choose_MasterMenu(uint8_t choice)     //choose function
   {
     case 1 : changePass();
               break;
-    case 2:  changeID();
+    case 2:  changeIDCARD();
               break; 
     case 3 : changeFinger();
               break;      
@@ -369,12 +371,69 @@ void changePass()
   delay(2000);
   master_Menu(1); 
 }
-void changeID()
-{
-}
+
 void changeFinger()
 {
 }
+//-----------------------HAM CHANGE ID CARD--------------------------------------
+void changeID_Menu(char key)
+{
+  if(key == 'B')choiceChangeID -=1;
+  else if (key == 'C')choiceChangeID += 1;
+  if(choiceChangeID == 1)
+  {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("> ADD ID CARD");
+    lcd.setCursor(0, 1);
+    lcd.print("  REMOVE ID CARD");
+  }
+  else if(choiceChangeID == 2)
+  {
+    lcd.clear();
+    lcd.setCursor(0,0);   
+    lcd.print("  ADD ID CARD");
+    lcd.setCursor(0, 1);
+    lcd.print("> REMOVE ID CARD");
+  }else if(choiceChangeID < 1)choiceChangeID =1;
+  else choiceChangeID =2;
+}
+void addID()
+{
+
+}
+void removeID()
+{
+
+}
+void choose_changeID(uint8_t choice)
+{
+  switch(choice)
+  {
+    case 1: addID();
+            break;
+    case 2: removeID();
+            break; 
+  }
+}
+void changeIDCARD()
+{
+  changeID_Menu(1);
+  char key;
+  while(key != '*' && key != 'A')
+  {
+    key = keypad.getKey(); 
+    Handle_Key(key,&changeID_Menu,&choose_changeID,choiceChangeID);
+  }
+  choiceChangeID =1;
+  if(key == '*') 
+  {
+    master_Menu(1);
+  }
+  else if(key =='A') longjmp(buf3,1);
+}
+
+
 //-----------------------HAM CHINH-----------------------------------------------
 void setup() 
 {
@@ -389,7 +448,6 @@ void setup()
   readpass(pass);
   Read_MasterID(masterId);
   Serial.println(pass);
-  //Serial.println(masterId);
 }
 void loop() {
   int again3;
