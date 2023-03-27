@@ -9,8 +9,9 @@
 #define EEPROM_SIZE 200
 #define relay 2
 jmp_buf buf2;  // return main menu
-jmp_buf buf3;  // return 
-
+jmp_buf buf3;  // return dau chuong trinh khi nhan A
+jmp_buf buf4;  // return master menu
+jmp_buf buf5; //return  menu change id card
 //Setup keypad 4x4
 #define ROW_NUM     4 // four rows
 #define COLUMN_NUM  4 // four columns
@@ -27,12 +28,13 @@ byte pin_column[COLUMN_NUM] = {25,26,27,4};
 Keypad keypad = Keypad( makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_NUM );
 //Setup lcd
 LiquidCrystal_I2C lcd(0x27,16,2);
+//global variable
 uint8_t choiceMainMenu =1;
 uint8_t choiceMasterMenu =1;
 uint8_t choiceChangeID =1;
 bool state = 0;                 // trang thai lcd | 0: off ; 1: on
 char pass[7]="";               // pass doc tu eeprom
-
+uint16_t lastCell;                // luu vi tri o nho chua du lieu cuoi cung
 //Setup RFID
 #define RST  13
 #define SDA  5
@@ -104,6 +106,15 @@ void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t),uint8
   else if((key == 'B'&& state == 1)||(key == 'C'&& state == 1))typeMenu(key);
   else if(key =='D'&& state == 1)choose_menu(choice);
 }
+void readIndex(uint16_t *lastCell)
+{
+  *lastCell = EEPROM.read(0);
+}
+void saveIndex(uint16_t lastCell)
+{
+  EEPROM.write(0,lastCell);
+  EEPROM.commit();
+}
 //-------------------------HAM MAIN MENU------------------------------------------
 void main_Menu(char key)             //mainscreen
 {
@@ -143,7 +154,7 @@ void choose_MainMenu(uint8_t choice)     //choose function
   {
     case 1 : enterpass();
               break;
-    case 2:  scanID();
+    case 2:  scanID(lastCell);
               break; 
     case 3 : finger();
               break;      
@@ -248,8 +259,9 @@ void enterpass()                //Chuc nang 1: nhap mat khau
   }
 
 }
-void scanID()                   //Chuc nang 2: scan id card
+void scanID(uint16_t lastCell)                   //Chuc nang 2: scan id card
 {
+  lable:
   char key;
   uint8_t idCard[5] ="";
   lcd.clear();
@@ -267,8 +279,16 @@ void scanID()                   //Chuc nang 2: scan id card
     turn_On_OFF();
     longjmp(buf3,1);
   }
-  //so sanh idcard voi master
-  if(strcmp((char*)idCard,(char*)masterId) == 0)
+
+  uint16_t index = CompareID(idCard,lastCell);
+   Serial.println(index);
+  if(index == 0)
+  {
+    thongBao((char*)"WRONG ID CARD");
+    delay(1500);
+    goto lable;    
+  }
+  else if(index == 7)
   {
     open_cabinet();
     thongBao((char*)"CABINET IS OPEN");
@@ -283,7 +303,16 @@ void scanID()                   //Chuc nang 2: scan id card
     choiceMasterMenu = 1;
     if(key == '*') longjmp(buf2,1);
     else if(key =='A') longjmp(buf3,1);
-  }  
+  }
+  else
+  {    
+    open_cabinet();
+    thongBao((char*)"CABINET IS OPEN");
+    delay(3000);
+    close_cabinet();
+    longjmp(buf2,1);
+  }
+
 }
 void finger()                   //Chuc nang 3: quet van tay
 {
@@ -293,6 +322,8 @@ void master_Menu(char key)
 {
   if(key == 'B')choiceMasterMenu -=1;
   else if (key == 'C')choiceMasterMenu += 1;
+  int again4;
+  again4 = setjmp(buf4);
   if(choiceMasterMenu == 1)
   {
     lcd.clear();
@@ -356,7 +387,7 @@ void changePass()
     }
     else if(key == '*')
     {
-      master_Menu(1);
+      longjmp(buf4,1);
     }
     else if (key && key!='A'&& key!='B'&& key!='C'&& key!='D'&& i<6 ) 
     {
@@ -380,6 +411,8 @@ void changeID_Menu(char key)
 {
   if(key == 'B')choiceChangeID -=1;
   else if (key == 'C')choiceChangeID += 1;
+  int again5;
+  again5 = setjmp(buf5);
   if(choiceChangeID == 1)
   {
     lcd.clear();
@@ -398,21 +431,150 @@ void changeID_Menu(char key)
   }else if(choiceChangeID < 1)choiceChangeID =1;
   else choiceChangeID =2;
 }
-void addID()
+uint16_t CompareID(uint8_t idCard[],uint16_t lastCell)
 {
-
+  uint8_t id[5] ="";
+  uint16_t j = 7;     // vi tri luu gia tri dau tien cua UID
+  while(j<lastCell)
+  {
+    for(int i =0 ; i<4;i++)
+    {
+      id[i] = EEPROM.read(i+j);
+    }
+    if(strcmp((char*)idCard,(char*)id) == 0)
+    {
+      return j;
+    }
+    else j+=4;
+  }
+  return 0;
 }
-void removeID()
+void addID(uint16_t lastCell)
 {
-
+  label1:
+  char key;
+  uint8_t id[5] ="";
+  uint16_t j = 11;     // vi tri luu gia tri dau tien cua UID
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("SCAN NEW ID CARD");
+  while(id[0]==0 && id[1]==0 && id[2]==0 && id[3]==0 && key != '*' && key !='A')
+  {
+    read_Id_Card(id);
+    key = keypad.getKey(); 
+  }
+  if(key == '*') longjmp(buf5,1);
+  else if(key =='A')
+  {
+    turn_On_OFF();
+    longjmp(buf3,1);
+  }
+  Serial.println(CompareID(id,lastCell));
+  if(CompareID(id,lastCell)!= 0)
+  {
+    thongBao((char*)"ID EXISTES");
+    delay(1500);
+    goto label1;
+  }
+  else 
+  {
+      while(j < lastCell)
+      {
+        int dem = 0;
+        while(dem < 4 && EEPROM.read(dem + j) == 255) dem++;  //kiem tra 4 o trong lien tiep
+        if(dem == 4)
+        {
+          for(int i =0; i < 4;i++)
+          {
+            EEPROM.write(i+j,id[i]);
+            EEPROM.commit();
+          }
+          goto lable2;
+        }else j+=4;
+      }
+      for(int i =0; i < 4;i++)
+      {
+        EEPROM.write(i+lastCell+1,id[i]);
+        EEPROM.commit();
+      }
+    
+    saveIndex(lastCell+4); 
+    readIndex(&lastCell);
+    lable2:
+    lcd.clear();
+    lcd.setCursor(1,0);
+    lcd.print("ADD COMPLETELY");
+    delay(1000);
+    changeID_Menu(1);
+  }
+ 
+}
+void removeID(uint16_t lastCell)
+{
+  label1:
+  char key;
+  uint8_t id[5] ="";
+  uint16_t j = 11;     // vi tri luu gia tri dau tien cua UID
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("SCAN THE ID CARD");
+  lcd.setCursor(1,1);
+  lcd.print("NEED TO REMOVE");
+  while(id[0]==0 && id[1]==0 && id[2]==0 && id[3]==0 && key != '*' && key !='A')
+  {
+    read_Id_Card(id);
+    key = keypad.getKey(); 
+  }
+  if(key == '*') longjmp(buf5,1);
+  else if(key =='A')
+  {
+    turn_On_OFF();
+    longjmp(buf3,1);
+  }
+  uint16_t index = CompareID(id,lastCell);
+  if(index== 0)
+  {
+    thongBao((char*)"ID DOESN'T EXIST");
+    delay(1500);
+    goto label1;
+  }
+  else if(index == 7)
+  {
+    lcd.clear();
+    lcd.setCursor(2,0);
+    lcd.print("CAN'T REMOVE");
+    lcd.setCursor(2,1);
+    lcd.print(" MASTER CARD");
+    delay(1500); 
+    goto label1; 
+  }
+  else
+  {
+    for(int i =0; i < 4;i++)
+    {
+        EEPROM.write(i+index,255);
+        EEPROM.commit();
+    }
+    if((lastCell - index + 1) == 4) 
+    {
+      lastCell -= 4;
+      saveIndex(lastCell);
+      readIndex(&lastCell);
+    }
+    lcd.clear();
+    lcd.setCursor(4,0);
+    lcd.print("REMOVED");
+    delay(1500);
+    longjmp(buf5,1);
+  }  
 }
 void choose_changeID(uint8_t choice)
 {
   switch(choice)
   {
-    case 1: addID();
+    case 1: addID(lastCell);
             break;
-    case 2: removeID();
+    case 2: removeID(lastCell);
             break; 
   }
 }
@@ -432,8 +594,6 @@ void changeIDCARD()
   }
   else if(key =='A') longjmp(buf3,1);
 }
-
-
 //-----------------------HAM CHINH-----------------------------------------------
 void setup() 
 {
@@ -447,12 +607,13 @@ void setup()
   pinMode(relay,OUTPUT);
   readpass(pass);
   Read_MasterID(masterId);
+  readIndex(&lastCell);
   Serial.println(pass);
+  Serial.println(lastCell);
 }
 void loop() {
   int again3;
   again3 = setjmp(buf3);
   char key = keypad.getKey();
   Handle_Key(key,&main_Menu,&choose_MainMenu,choiceMainMenu);
-
 }
