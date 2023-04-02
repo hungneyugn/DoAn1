@@ -97,18 +97,20 @@ void readpass(char a[])         // doc mat khau tu eeprom
   }
   
 }
-void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t),uint8_t choice)
+void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t,uint16_t*),uint8_t choice,uint16_t* lastCell)
 {
   if(key == 'A')
   {
     turn_On_OFF();
   } 
   else if((key == 'B'&& state == 1)||(key == 'C'&& state == 1))typeMenu(key);
-  else if(key =='D'&& state == 1)choose_menu(choice);
+  else if(key =='D'&& state == 1)choose_menu(choice, lastCell);
 }
 void readIndex(uint16_t *lastCell)
 {
   *lastCell = EEPROM.read(0);
+  Serial.print("lastcell: ");
+  Serial.println(*lastCell);
 }
 void saveIndex(uint16_t lastCell)
 {
@@ -122,7 +124,6 @@ void main_Menu(char key)             //mainscreen
   else if (key == 'C')choiceMainMenu += 1;
   if(choiceMainMenu == 1)
   {
-    
     lcd.clear();
     lcd.setCursor(1,0);   
     lcd.print("CHOOSE A OPTION");
@@ -148,7 +149,7 @@ void main_Menu(char key)             //mainscreen
   else choiceMainMenu =3;
 
 }
-void choose_MainMenu(uint8_t choice)     //choose function
+void choose_MainMenu(uint8_t choice,uint16_t *lastCell)     //choose function
 {
   switch(choice)
   {
@@ -259,7 +260,7 @@ void enterpass()                //Chuc nang 1: nhap mat khau
   }
 
 }
-void scanID(uint16_t lastCell)                   //Chuc nang 2: scan id card
+void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card
 {
   lable:
   char key;
@@ -280,7 +281,7 @@ void scanID(uint16_t lastCell)                   //Chuc nang 2: scan id card
     longjmp(buf3,1);
   }
 
-  uint16_t index = CompareID(idCard,lastCell);
+  uint16_t index = CompareID(idCard,*lastCell);
    Serial.println(index);
   if(index == 0)
   {
@@ -298,7 +299,7 @@ void scanID(uint16_t lastCell)                   //Chuc nang 2: scan id card
     while(key != '*' && key != 'A')
     {
       key = keypad.getKey(); 
-      Handle_Key(key,&master_Menu,&choose_MasterMenu,choiceMasterMenu);
+      Handle_Key(key,&master_Menu,&choose_MasterMenu,choiceMasterMenu,lastCell);
     }
     choiceMasterMenu = 1;
     if(key == '*') longjmp(buf2,1);
@@ -312,7 +313,6 @@ void scanID(uint16_t lastCell)                   //Chuc nang 2: scan id card
     close_cabinet();
     longjmp(buf2,1);
   }
-
 }
 void finger()                   //Chuc nang 3: quet van tay
 {
@@ -350,13 +350,13 @@ void master_Menu(char key)
   }else if(choiceMasterMenu < 1)choiceMasterMenu =1;
   else choiceMasterMenu =3;
 }
-void choose_MasterMenu(uint8_t choice)     //choose function
+void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)     //choose function
 {
   switch(choice)
   {
     case 1 : changePass();
               break;
-    case 2:  changeIDCARD();
+    case 2:  changeIDCARD(lastCell);
               break; 
     case 3 : changeFinger();
               break;      
@@ -387,6 +387,7 @@ void changePass()
     }
     else if(key == '*')
     {
+      lcd.noBlink();
       longjmp(buf4,1);
     }
     else if (key && key!='A'&& key!='B'&& key!='C'&& key!='D'&& i<6 ) 
@@ -400,9 +401,9 @@ void changePass()
   savepass(a);
   thongBao((char*)"PASSWORD CHANGED");
   delay(2000);
+  lcd.noBlink();
   master_Menu(1); 
 }
-
 void changeFinger()
 {
 }
@@ -435,9 +436,11 @@ uint16_t CompareID(uint8_t idCard[],uint16_t lastCell)
 {
   uint8_t id[5] ="";
   uint16_t j = 7;     // vi tri luu gia tri dau tien cua UID
-  while(j<lastCell)
+  Serial.print("last cell in compare: ");
+  Serial.println(lastCell);
+  while(j < lastCell)
   {
-    for(int i =0 ; i<4;i++)
+    for(int i =0 ; i < 4;i++)
     {
       id[i] = EEPROM.read(i+j);
     }
@@ -449,7 +452,7 @@ uint16_t CompareID(uint8_t idCard[],uint16_t lastCell)
   }
   return 0;
 }
-void addID(uint16_t lastCell)
+void addID(uint16_t *lastCell)
 {
   label1:
   char key;
@@ -463,14 +466,18 @@ void addID(uint16_t lastCell)
     read_Id_Card(id);
     key = keypad.getKey(); 
   }
-  if(key == '*') longjmp(buf5,1);
+  if(key == '*')
+  {
+    choiceChangeID = 1;
+    longjmp(buf5,1);
+  } 
   else if(key =='A')
   {
     turn_On_OFF();
     longjmp(buf3,1);
   }
-  Serial.println(CompareID(id,lastCell));
-  if(CompareID(id,lastCell)!= 0)
+  Serial.println(CompareID(id,*lastCell));
+  if(CompareID(id,*lastCell)!= 0)
   {
     thongBao((char*)"ID EXISTES");
     delay(1500);
@@ -478,7 +485,7 @@ void addID(uint16_t lastCell)
   }
   else 
   {
-      while(j < lastCell)
+      while(j < *lastCell)
       {
         int dem = 0;
         while(dem < 4 && EEPROM.read(dem + j) == 255) dem++;  //kiem tra 4 o trong lien tiep
@@ -494,12 +501,12 @@ void addID(uint16_t lastCell)
       }
       for(int i =0; i < 4;i++)
       {
-        EEPROM.write(i+lastCell+1,id[i]);
+        EEPROM.write(i + *lastCell + 1, id[i]);
         EEPROM.commit();
       }
     
-    saveIndex(lastCell+4); 
-    readIndex(&lastCell);
+    saveIndex(*lastCell+4); 
+    readIndex(lastCell);
     lable2:
     lcd.clear();
     lcd.setCursor(1,0);
@@ -509,7 +516,7 @@ void addID(uint16_t lastCell)
   }
  
 }
-void removeID(uint16_t lastCell)
+void removeID(uint16_t *lastCell)
 {
   label1:
   char key;
@@ -520,18 +527,21 @@ void removeID(uint16_t lastCell)
   lcd.print("SCAN THE ID CARD");
   lcd.setCursor(1,1);
   lcd.print("NEED TO REMOVE");
-  while(id[0]==0 && id[1]==0 && id[2]==0 && id[3]==0 && key != '*' && key !='A')
+  while(id[0] == 0 && id[1] == 0 && id[2] == 0 && id[3] == 0 && key != '*' && key !='A')
   {
     read_Id_Card(id);
     key = keypad.getKey(); 
   }
-  if(key == '*') longjmp(buf5,1);
+  if(key == '*') {
+    choiceChangeID = 2;
+    longjmp(buf5,1);
+  }
   else if(key =='A')
   {
     turn_On_OFF();
     longjmp(buf3,1);
   }
-  uint16_t index = CompareID(id,lastCell);
+  uint16_t index = CompareID(id,*lastCell);
   if(index== 0)
   {
     thongBao((char*)"ID DOESN'T EXIST");
@@ -555,11 +565,11 @@ void removeID(uint16_t lastCell)
         EEPROM.write(i+index,255);
         EEPROM.commit();
     }
-    if((lastCell - index + 1) == 4) 
+    if((*lastCell - index + 1) == 4) 
     {
-      lastCell -= 4;
-      saveIndex(lastCell);
-      readIndex(&lastCell);
+      *lastCell -= 4;
+      saveIndex(*lastCell);
+      readIndex(lastCell);
     }
     lcd.clear();
     lcd.setCursor(4,0);
@@ -568,7 +578,7 @@ void removeID(uint16_t lastCell)
     longjmp(buf5,1);
   }  
 }
-void choose_changeID(uint8_t choice)
+void choose_changeID(uint8_t choice,uint16_t *lastCell)
 {
   switch(choice)
   {
@@ -578,14 +588,14 @@ void choose_changeID(uint8_t choice)
             break; 
   }
 }
-void changeIDCARD()
+void changeIDCARD(uint16_t *lastCell)
 {
   changeID_Menu(1);
   char key;
   while(key != '*' && key != 'A')
   {
     key = keypad.getKey(); 
-    Handle_Key(key,&changeID_Menu,&choose_changeID,choiceChangeID);
+    Handle_Key(key,&changeID_Menu,&choose_changeID,choiceChangeID,lastCell);
   }
   choiceChangeID =1;
   if(key == '*') 
@@ -615,5 +625,5 @@ void loop() {
   int again3;
   again3 = setjmp(buf3);
   char key = keypad.getKey();
-  Handle_Key(key,&main_Menu,&choose_MainMenu,choiceMainMenu);
+  Handle_Key(key,&main_Menu,&choose_MainMenu,choiceMainMenu,&lastCell);
 }
