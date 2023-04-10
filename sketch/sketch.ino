@@ -5,8 +5,11 @@
 #include <SPI.h>      
 #include <MFRC522.h>
 #include <setjmp.h>
+#include <Adafruit_Fingerprint.h> // thư viện vân tay
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&Serial2);
 //so byte eeprom luu
 #define EEPROM_SIZE 200
+uint8_t id;
 #define relay 2
 jmp_buf buf2;  // return main menu
 jmp_buf buf3;  // return dau chuong trinh khi nhan A
@@ -32,6 +35,7 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 uint8_t choiceMainMenu =1;
 uint8_t choiceMasterMenu =1;
 uint8_t choiceChangeID =1;
+uint8_t choiceFingerMenu = 1;
 bool state = 0;                 // trang thai lcd | 0: off ; 1: on
 char pass[7]="";               // pass doc tu eeprom
 uint16_t lastCell;                // luu vi tri o nho chua du lieu cuoi cung
@@ -157,7 +161,7 @@ void choose_MainMenu(uint8_t choice,uint16_t *lastCell)     //choose function
               break;
     case 2:  scanID(lastCell);
               break; 
-    case 3 : finger();
+    case 3 : scanfinger();
               break;      
   }
 }
@@ -314,8 +318,38 @@ void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card
     longjmp(buf2,1);
   }
 }
-void finger()                   //Chuc nang 3: quet van tay
+void scanfinger()                   //Chuc nang 3: quet van tay
 {
+  char key;
+  int id = -1;
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("SCAN FINGERPRINT");
+  while(key != '*' && key != 'A'&& id == -1)
+  { 
+    uint8_t p = finger.getImage();
+    key = keypad.getKey(); 
+    if (p == FINGERPRINT_OK){
+       key = keypad.getKey(); 
+      id = checkvantay(p);
+      if(id==-1)
+      {
+        thongBao((char*)"WRONG FGPRINT");
+        delay(1000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("SCAN FINGERPRINT");
+      }
+    }
+  }
+  if(key == '*') longjmp(buf2,1);
+  else if(key =='A') longjmp(buf3,1);
+  open_cabinet();
+  thongBao((char*)"CABINET IS OPEN");
+  delay(3000);
+  close_cabinet();
+  longjmp(buf2,1);
+
 }
 //-----------------------HAM MASTER MENU-----------------------------------------
 void master_Menu(char key)    
@@ -358,7 +392,7 @@ void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)     //choose function
               break;
     case 2:  changeIDCARD(lastCell);
               break; 
-    case 3 : changeFinger();
+    case 3 : changeFinger(lastCell);
               break;      
   }
 }
@@ -404,8 +438,66 @@ void changePass()
   lcd.noBlink();
   master_Menu(1); 
 }
-void changeFinger()
+//.......................HAM CHANGE FINGERPRINT..................................
+void changeFingerMenu(char key)
 {
+  if(key == 'B')choiceFingerMenu -=1;
+  else if (key == 'C')choiceFingerMenu += 1;
+  if(choiceFingerMenu == 1)
+  {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("> ADD FGPRINT");
+    lcd.setCursor(0, 1);
+    lcd.print("  REMOVE FGPRINT");
+  }
+  else if(choiceFingerMenu == 2)
+  {
+    lcd.clear();
+    lcd.setCursor(0,0);   
+    lcd.print("  ADD FGPRINT");
+    lcd.setCursor(0, 1);
+    lcd.print("> REMOVE FGPRINT");
+  }else if(choiceFingerMenu < 1)choiceFingerMenu =1;
+  else choiceFingerMenu =2;
+}
+void chooseFinger(uint8_t choice,uint16_t *lastCell)
+{
+  switch(choice)
+  {
+    case 1: addFinger();
+            break;
+    case 2: removeFinger();
+            break; 
+  }
+}
+void addFinger()
+{
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("SCAN FINGERPRINT");
+
+
+}
+void removeFinger()
+{
+
+}
+void changeFinger(uint16_t *lastCell)
+{
+  changeFingerMenu(1);
+  char key;
+  while(key != '*' && key != 'A')
+  {
+    key = keypad.getKey(); 
+    Handle_Key(key,&changeFingerMenu,&chooseFinger,choiceFingerMenu,lastCell);
+  }
+  choiceFingerMenu =1;
+  if(key == '*') 
+  {
+    master_Menu(1);
+  }
+  else if(key =='A') longjmp(buf3,1);
 }
 //-----------------------HAM CHANGE ID CARD--------------------------------------
 void changeID_Menu(char key)
@@ -604,9 +696,47 @@ void changeIDCARD(uint16_t *lastCell)
   }
   else if(key =='A') longjmp(buf3,1);
 }
+//-------------------------------------------------------------//
+int checkvantay(uint8_t p) {
+  p = finger.image2Tz();
+  if (p != FINGERPRINT_OK) return -1;
+
+  p = finger.fingerFastSearch();
+  if (p != FINGERPRINT_OK) return -1;
+
+  // found a match!
+  Serial.print("Found ID #");
+  Serial.print(finger.fingerID);
+  Serial.print(" with confidence of ");
+  Serial.println(finger.confidence);
+  return finger.fingerID;
+}
+
+uint8_t getFingerprintID() { // Khai báo hàm getFingerprintID() trả về kiểu dữ liệu uint8_t.
+  uint8_t p = finger.getImage(); // lấy hình ảnh của vân tay và gán kết quả trả về cho biến p.
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");// lấy hình ảnh vân tay thành công
+      break;
+    case FINGERPRINT_NOFINGER: // không phát hiện được vân tay
+      Serial.println("No finger detected");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR: // lỗi truyền
+      Serial.println("Communication error");
+      return p;
+    case FINGERPRINT_IMAGEFAIL: // lỗi chụp hình ảnh
+      Serial.println("Imaging error");
+      return p;
+    default: // có lỗi không xác định
+      Serial.println("Unknown error");
+      return p;
+  }
+}
 //-----------------------HAM CHINH-----------------------------------------------
 void setup() 
 {
+  Serial2.begin(9600);
+  finger.begin(57600);
   lcd.init();
   lcd.clear();
   lcd.noBacklight();
@@ -620,6 +750,9 @@ void setup()
   readIndex(&lastCell);
   Serial.println(pass);
   Serial.println(lastCell);
+  Serial.print("SL Van tay da luu:");
+  Serial.println(finger.templateCount); //In số lượng mẫu vân tay đã lưu trữ trên cảm biến.
+  
 }
 void loop() {
   int again3;
