@@ -10,11 +10,14 @@ Adafruit_Fingerprint finger = Adafruit_Fingerprint(&Serial2);
 //so byte eeprom luu
 #define EEPROM_SIZE 200
 uint8_t id;
+uint8_t numFinger;
+
 #define relay 2
 jmp_buf buf2;  // return main menu
 jmp_buf buf3;  // return dau chuong trinh khi nhan A
 jmp_buf buf4;  // return master menu
 jmp_buf buf5; //return  menu change id card
+jmp_buf buf6;
 //Setup keypad 4x4
 #define ROW_NUM     4 // four rows
 #define COLUMN_NUM  4 // four columns
@@ -68,10 +71,11 @@ void turn_On_OFF()              //bat tat lcd
     lcd.noBacklight();
   }
 }
+
 void thongBao(char* thongbao)   // Hien thi thong bao
 {
   lcd.clear();
-  lcd.setCursor(1,0);
+ lcd.setCursor(1,0)
   lcd.print(thongbao);
 }
 void delect(int i)              // xoa ki tu khi nhap mat khau
@@ -443,6 +447,8 @@ void changeFingerMenu(char key)
 {
   if(key == 'B')choiceFingerMenu -=1;
   else if (key == 'C')choiceFingerMenu += 1;
+int again6;
+again6 = setjmp(buf6);  
   if(choiceFingerMenu == 1)
   {
     lcd.clear();
@@ -473,14 +479,87 @@ void chooseFinger(uint8_t choice,uint16_t *lastCell)
 }
 void addFinger()
 {
+  again:
+  uint8_t flag = 0;
+  int id=-1;  
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("SCAN FINGERPRINT");
-
+  char key;
+  while(key != '*' && key != 'A'&& id == -1 && flag == 0)
+  { 
+    uint8_t p = finger.getImage();
+    key = keypad.getKey(); 
+    if (p == FINGERPRINT_OK){
+      id = checkvantay(p);
+      if(id == -1 ){
+        layvantay();
+      }
+      else{
+          lcd.clear();
+          lcd.setCursor(1, 0);
+          lcd.print("FGPRINT EXISTS");
+          delay(1000);
+          goto again;          
+      }
+    }
+  }
+  if(key == '*') 
+  {
+    choiceFingerMenu = 1;
+    longjmp(buf6,1);
+  }
+  else if(key =='A') longjmp(buf3,1);
+  lcd.clear();
+  lcd.setCursor(1,0);
+  lcd.print("ADD COMPLETELY");
+  delay(1000);
+  changeFingerMenu(1);  
 
 }
 void removeFinger()
-{
+{  
+   again:
+  uint8_t flag = 0;
+  int id=-1;  
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("SCAN FINGERPRINT");
+  lcd.setCursor(1, 1);
+  lcd.print("NEED TO DELECT");
+  char key;
+  while(key != '*' && key != 'A'&& id == -1 && flag == 0)
+  { 
+    uint8_t p = finger.getImage();
+    key = keypad.getKey(); 
+    if (p == FINGERPRINT_OK){
+      id = checkvantay(p);
+      if(id == -1 ){
+          lcd.clear();
+          lcd.setCursor(2, 0);
+          lcd.print("FINGERPRINT");
+          lcd.setCursor(1, 1);
+          lcd.print("DOESN'T EXIST");
+          delay(1000);
+          goto again;
+       
+      }
+      else{
+         xoaid(id);         
+      }
+    }
+  }
+  if(key == '*') 
+  {
+    choiceFingerMenu = 1;
+    longjmp(buf6,1);
+  }
+  else if(key =='A') longjmp(buf3,1);
+  lcd.clear();
+    lcd.setCursor(4,0);
+    lcd.print("REMOVED");
+  delay(1000);
+  changeFingerMenu(1);  
 
 }
 void changeFinger(uint16_t *lastCell)
@@ -732,6 +811,170 @@ uint8_t getFingerprintID() { // Khai báo hàm getFingerprintID() trả về ki�
       return p;
   }
 }
+//lay van ta
+uint8_t layvantay() {
+  uint8_t flag = 0;
+  int p = -1;
+  finger.getTemplateCount();
+  uint8_t numFinger;
+  numFinger=finger.templateCount;
+  //doi van tay cua user
+ 
+  // switch (p) {
+  //   case FINGERPRINT_OK:
+  //     Serial.println("Image taken");
+  //     break;
+  //   case FINGERPRINT_NOFINGER:
+  //     Serial.println(".");
+  //     break;
+  //   case FINGERPRINT_PACKETRECIEVEERR:
+  //     Serial.println("Communication error");
+  //     break;
+  //   case FINGERPRINT_IMAGEFAIL:
+  //     Serial.println("Imaging error");
+  //     break;
+  //   default:
+  //     Serial.println("Unknown error");
+  //     break;
+  // }
+  //xac nhan van tay
+  p = finger.image2Tz(1);
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      return p;
+    case FINGERPRINT_FEATUREFAIL:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    case FINGERPRINT_INVALIDIMAGE:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    default:
+      Serial.println("Unknown error");
+      return p;
+  }
+
+  lcd.clear();
+  lcd.setCursor(4,0);
+  lcd.print("PUT OUT");
+  delay(2000);
+  p = 0;
+  while (p != FINGERPRINT_NOFINGER) {
+    p = finger.getImage();
+  }
+
+  p = -1;
+  lcd.clear();
+  lcd.setCursor(1,0);
+  lcd.print("CONFIRM AGAIN");
+  delay(2000);
+  //doi van tay cua user
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+    switch (p) {
+      case FINGERPRINT_OK:
+        Serial.println("Image taken");
+        break;
+      case FINGERPRINT_NOFINGER:
+        Serial.print(".");
+        break;
+      case FINGERPRINT_PACKETRECIEVEERR:
+        Serial.println("Communication error");
+        break;
+      case FINGERPRINT_IMAGEFAIL:
+        Serial.println("Imaging error");
+        break;
+      default:
+        Serial.println("Unknown error");
+        break;
+    }
+  }
+
+  p = finger.image2Tz(2);
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      return p;
+    case FINGERPRINT_FEATUREFAIL:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    case FINGERPRINT_INVALIDIMAGE:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    default:
+      Serial.println("Unknown error");
+      return p;
+  }
+  Serial.print("da tao room cho ");
+  Serial.println(numFinger);
+  //tao model cho ID da chon
+  p = finger.createModel();
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Prints matched!");
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Serial.println("Communication error");
+    return p;
+  } else if (p == FINGERPRINT_ENROLLMISMATCH) {
+    Serial.println("Fingerprints did not match");
+    return p;
+  } else {
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  // luu ID vao model
+  p = finger.storeModel(++numFinger);
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Stored!");
+    flag = 1;
+    return flag;
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Serial.println("Communication error");
+    return p;
+  } else if (p == FINGERPRINT_BADLOCATION) {
+    Serial.println("Could not store in that location");
+    return p;
+  } else if (p == FINGERPRINT_FLASHERR) {
+    Serial.println("Error writing to flash");
+    return p;
+  } else {
+    Serial.println("Unknown error");
+    return p;
+  }
+}
+// xoa van tay
+uint8_t xoaid(uint8_t id) {
+  uint8_t p = -1;
+  p = finger.deleteModel(id);
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Deleted!");
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Serial.println("Communication error");
+    return p;
+  } else if (p == FINGERPRINT_BADLOCATION) {
+    Serial.println("Could not delete in that location");
+    return p;
+  } else if (p == FINGERPRINT_FLASHERR) {
+    Serial.println("Error writing to flash");
+    return p;
+  } else {
+    Serial.print("Unknown error: 0x");
+    Serial.println(p, HEX);
+    return p;
+  }
+}
 //-----------------------HAM CHINH-----------------------------------------------
 void setup() 
 {
@@ -751,8 +994,9 @@ void setup()
   Serial.println(pass);
   Serial.println(lastCell);
   Serial.print("SL Van tay da luu:");
-  Serial.println(finger.templateCount); //In số lượng mẫu vân tay đã lưu trữ trên cảm biến.
-  
+  finger.getTemplateCount();
+  numFinger = finger.templateCount;
+  Serial.println(numFinger); //In số lượng mẫu vân tay đã lưu trữ trên cảm biến
 }
 void loop() {
   int again3;
