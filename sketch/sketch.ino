@@ -35,11 +35,12 @@ Keypad keypad = Keypad( makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_
 //Setup lcd
 LiquidCrystal_I2C lcd(0x27,16,2);
 //global variable
-uint8_t choiceMainMenu =1;
-uint8_t choiceMasterMenu =1;
-uint8_t choiceChangeID =1;
-uint8_t choiceFingerMenu = 1;
-bool state = 0;                 // trang thai lcd | 0: off ; 1: on
+uint8_t g_choiceMainMenu =1;
+uint8_t g_choiceMasterMenu =1;
+uint8_t g_choiceChangeID =1;
+uint8_t g_choiceFingerMenu = 1;
+bool g_state = 0;                 // trang thai lcd | 0: off ; 1: on
+uint8_t flag = 0;
 char pass[7]="";               // pass doc tu eeprom
 uint16_t lastCell;                // luu vi tri o nho chua du lieu cuoi cung
 //Setup RFID
@@ -51,14 +52,14 @@ void main_Menu(char);
 void choose_MainMenu(uint8_t) ;
 
 //-------------------------HAM SU DUNG CHUNG------------------------------------
-void turn_On_OFF()              //bat tat lcd 
+void turn_On_OFF()              //bat tat lcd //r
 {
-  state =!state;
-  Serial.println(state);
+  g_state =!g_state;
+  Serial.println(g_state);
   int again2;
-  choiceMainMenu =1;
+  g_choiceMainMenu =1;
   again2 = setjmp(buf2);
-  if(state == 1)
+  if(g_state == 1)
   {
     // //turn on lcd
     lcd.init();       
@@ -71,14 +72,19 @@ void turn_On_OFF()              //bat tat lcd
     lcd.noBacklight();
   }
 }
-
-void thongBao(char* thongbao)   // Hien thi thong bao
+void clearLine(uint8_t line) //r
 {
-  lcd.clear();
- lcd.setCursor(1,0)
-  lcd.print(thongbao);
+  if(line == 0) lcd.setCursor(0,0);
+  else lcd.setCursor(0,1);
+  lcd.print("                ");
 }
-void delect(int i)              // xoa ki tu khi nhap mat khau
+void displayLine(uint8_t index,uint8_t line,char* inform) //r
+{
+  clearLine(line);
+  lcd.setCursor(index,line);    
+  lcd.print(inform);  
+}
+void delect(int i)              // xoa ki tu khi nhap mat khau//r
 {
   if(i>=0 && i<=6)
   {
@@ -88,7 +94,7 @@ void delect(int i)              // xoa ki tu khi nhap mat khau
     lcd.setCursor(i+4,1);
   }
 }
-void savepass(char a[])      // luu mat khau vao eeprom
+void savepass(char a[])      // luu mat khau vao eeprom//r
 {
    for(int i = 0 ; i<6;i++)
   {
@@ -97,13 +103,12 @@ void savepass(char a[])      // luu mat khau vao eeprom
     EEPROM.commit();
   }
 }
-void readpass(char a[])         // doc mat khau tu eeprom
+void readpass(char a[])         // doc mat khau tu eeprom//r
 {
   for(int i =0 ; i<6;i++)
   {
     a[i] = EEPROM.read(i+1);
-  }
-  
+  } 
 }
 void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t,uint16_t*),uint8_t choice,uint16_t* lastCell)
 {
@@ -111,16 +116,16 @@ void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t,uint16
   {
     turn_On_OFF();
   } 
-  else if((key == 'B'&& state == 1)||(key == 'C'&& state == 1))typeMenu(key);
-  else if(key =='D'&& state == 1)choose_menu(choice, lastCell);
+  else if((key == 'B'&& g_state == 1)||(key == 'C'&& g_state == 1))typeMenu(key);
+  else if(key =='D'&& g_state == 1)choose_menu(choice, lastCell);
 }
-void readIndex(uint16_t *lastCell)
+void readIndex(uint16_t *lastCell) //r
 {
   *lastCell = EEPROM.read(0);
   Serial.print("lastcell: ");
   Serial.println(*lastCell);
 }
-void saveIndex(uint16_t lastCell)
+void saveIndex(uint16_t lastCell) //r
 {
   EEPROM.write(0,lastCell);
   EEPROM.commit();
@@ -128,33 +133,24 @@ void saveIndex(uint16_t lastCell)
 //-------------------------HAM MAIN MENU------------------------------------------
 void main_Menu(char key)             //mainscreen
 {
-  if(key == 'B')choiceMainMenu -=1;
-  else if (key == 'C')choiceMainMenu += 1;
-  if(choiceMainMenu == 1)
+  if(key == 'B')g_choiceMainMenu -=1;
+  else if (key == 'C')g_choiceMainMenu += 1;
+  if(g_choiceMainMenu == 1)
   {
-    lcd.clear();
-    lcd.setCursor(1,0);   
-    lcd.print("CHOOSE A OPTION");
-    lcd.setCursor(0,1);  
-    lcd.print("> ENTER PASSWORD");
+    displayLine(1,0,(char*)"CHOOSE A OPTION");
+    displayLine(0,1,(char*)"> ENTER PASSWORD");
   }
-  else if(choiceMainMenu == 2)
+  else if(g_choiceMainMenu == 2)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);   
-    lcd.print("> SCAN ID CARD");
-    lcd.setCursor(0,1);  
-    lcd.print("  FINGERPRINT");
+    displayLine(0,0,(char*)"> SCAN ID CARD");
+    displayLine(0,1,(char*)"  FINGERPRINT");
   }
-  else if(choiceMainMenu == 3)
+  else if(g_choiceMainMenu == 3)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);   
-    lcd.print("  SCAN ID CARD");
-    lcd.setCursor(0,1);  
-    lcd.print("> FINGERPRINT");
-  }else if(choiceMainMenu < 1)choiceMainMenu =1;
-  else choiceMainMenu =3;
+    displayLine(0,0,(char*)"  SCAN ID CARD");
+    displayLine(0,1,(char*)"> FINGERPRINT");
+  }else if(g_choiceMainMenu < 1)g_choiceMainMenu =1;
+  else g_choiceMainMenu =3;
 
 }
 void choose_MainMenu(uint8_t choice,uint16_t *lastCell)     //choose function
@@ -177,7 +173,7 @@ void close_cabinet()            // dong tu
 {
   digitalWrite(relay,LOW);
 }
-void read_Id_Card(uint8_t id[])
+void readIdCard(uint8_t id[])//r
 {
   if ( ! mfrc522.PICC_IsNewCardPresent()) return; //Kiem tra xem co the quet hay khong
   if ( ! mfrc522.PICC_ReadCardSerial()) return;  //Kiem tra xem doc the co thanh cong hay khong
@@ -195,7 +191,7 @@ void read_Id_Card(uint8_t id[])
   mfrc522.PICC_HaltA();  
   mfrc522.PCD_StopCrypto1();
 }
-void Read_MasterID(uint8_t id[])
+void readMasterID(uint8_t id[])//r
 {
   for(int i =0 ; i<4;i++)
   {
@@ -208,7 +204,7 @@ void Read_MasterID(uint8_t id[])
   }
   Serial.println();
 }
-void Set_MasterID(uint8_t id[])
+void setMasterID(uint8_t id[])//r
 {
   for(int i =0; i < 4;i++)
   {
@@ -216,14 +212,13 @@ void Set_MasterID(uint8_t id[])
     EEPROM.commit();
   }
 }
-void enterpass()                //Chuc nang 1: nhap mat khau
+void enterpass()                //Chuc nang 1: nhap mat khau//r
 {
   again:
   char a[7] ="" ;
   int i =0;
-  lcd.clear();
-  lcd.setCursor(1,0);
-  lcd.print("ENTER PASSWORD");
+  displayLine(1,0,(char*)"ENTER PASSWORD");
+  clearLine(1);
   lcd.setCursor(5,1);
   lcd.blink();
   while(i<7)
@@ -256,30 +251,31 @@ void enterpass()                //Chuc nang 1: nhap mat khau
   if(strcmp((char*)a,(char*)pass) == 0)
   {
     open_cabinet();
-    thongBao((char*)"CABINET IS OPEN");
+    displayLine(1, 0,(char*)"CABINET IS OPEN");
+    clearLine(1);
     delay(3000);
     close_cabinet();
     longjmp(buf2,1);
   }else
   {
-    thongBao((char*)"WRONG PASSWORD");
+    displayLine(1, 0,(char*)"WRONG PASSWORD");
+    clearLine(1);
     delay(1000);
     goto again;
   }
 
 }
-void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card
+void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card//r
 {
   lable:
   char key;
   uint8_t idCard[5] ="";
-  lcd.clear();
-  lcd.setCursor(1,0);
-  lcd.print("PUT IN ID CARD");
+  displayLine(1, 0, (char*)"PUT IN ID CARD");
+  clearLine(1);
   lcd.setCursor(5,1);
   while(idCard[0]==0 && idCard[1]==0 && idCard[2]==0 && idCard[3]==0 && key != '*' && key !='A')
   {
-    read_Id_Card(idCard);
+    readIdCard(idCard);
     key = keypad.getKey(); 
   }
   if(key == '*') longjmp(buf2,1);
@@ -293,30 +289,33 @@ void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card
    Serial.println(index);
   if(index == 0)
   {
-    thongBao((char*)"WRONG ID CARD");
+    displayLine(1, 0,(char*)"WRONG ID CARD");
+    clearLine(1);
     delay(1500);
     goto lable;    
   }
   else if(index == 7)
   {
     open_cabinet();
-    thongBao((char*)"CABINET IS OPEN");
+    displayLine(1, 0,(char*)"CABINET IS OPEN");
+    clearLine(1);
     delay(3000);
     close_cabinet();
     master_Menu(1);
     while(key != '*' && key != 'A')
     {
       key = keypad.getKey(); 
-      Handle_Key(key,&master_Menu,&choose_MasterMenu,choiceMasterMenu,lastCell);
+      Handle_Key(key,&master_Menu,&choose_MasterMenu,g_choiceMasterMenu,lastCell);
     }
-    choiceMasterMenu = 1;
+    g_choiceMasterMenu = 1;
     if(key == '*') longjmp(buf2,1);
     else if(key =='A') longjmp(buf3,1);
   }
   else
   {    
     open_cabinet();
-    thongBao((char*)"CABINET IS OPEN");
+    displayLine(1, 0,(char*)"CABINET IS OPEN");
+    clearLine(1);
     delay(3000);
     close_cabinet();
     longjmp(buf2,1);
@@ -326,9 +325,8 @@ void scanfinger()                   //Chuc nang 3: quet van tay
 {
   char key;
   int id = -1;
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("SCAN FINGERPRINT");
+  displayLine(0, 0,(char*)"SCAN FINGERPRINT");
+  clearLine(1);
   while(key != '*' && key != 'A'&& id == -1)
   { 
     uint8_t p = finger.getImage();
@@ -338,55 +336,47 @@ void scanfinger()                   //Chuc nang 3: quet van tay
       id = checkvantay(p);
       if(id==-1)
       {
-        thongBao((char*)"WRONG FGPRINT");
+        displayLine(1, 0,(char*)"WRONG FGPRINT");
+        clearLine(1);
         delay(1000);
         lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("SCAN FINGERPRINT");
+        displayLine(0, 0,(char*)"SCAN FINGERPRINT");
+        clearLine(1);
       }
     }
   }
   if(key == '*') longjmp(buf2,1);
   else if(key =='A') longjmp(buf3,1);
   open_cabinet();
-  thongBao((char*)"CABINET IS OPEN");
+  displayLine(1, 0,(char*)"CABINET IS OPEN");
+  clearLine(1);
   delay(3000);
   close_cabinet();
   longjmp(buf2,1);
-
 }
 //-----------------------HAM MASTER MENU-----------------------------------------
 void master_Menu(char key)    
 {
-  if(key == 'B')choiceMasterMenu -=1;
-  else if (key == 'C')choiceMasterMenu += 1;
+  if(key == 'B')g_choiceMasterMenu -=1;
+  else if (key == 'C')g_choiceMasterMenu += 1;
   int again4;
   again4 = setjmp(buf4);
-  if(choiceMasterMenu == 1)
+  if(g_choiceMasterMenu == 1)
   {
-    lcd.clear();
-    lcd.setCursor(4,0);
-    lcd.print("SECURITY");
-    lcd.setCursor(0, 1);
-    lcd.print(">CHANGE PASSWORD");
+    displayLine(4,0,(char*)"SECURITY");
+    displayLine(0,1,(char*)">CHANGE PASSWORD");
   }
-  else if(choiceMasterMenu == 2)
+  else if(g_choiceMasterMenu == 2)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);   
-    lcd.print(">CHANGE ID CARD");
-    lcd.setCursor(0,1);  
-    lcd.print(" CHANGE FGPRINT");
+    displayLine(0,0,(char*)">CHANGE ID CARD");
+    displayLine(0,1,(char*)" CHANGE FGPRINT");
   }
-  else if(choiceMasterMenu == 3)
+  else if(g_choiceMasterMenu == 3)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);   
-    lcd.print(" CHANGE ID CARD");
-    lcd.setCursor(0,1);  
-    lcd.print(">CHANGE FGPRINT");
-  }else if(choiceMasterMenu < 1)choiceMasterMenu =1;
-  else choiceMasterMenu =3;
+    displayLine(0,0,(char*)" CHANGE ID CARD");
+    displayLine(0,1,(char*)">CHANGE FGPRINT");
+  }else if(g_choiceMasterMenu < 1)g_choiceMasterMenu =1;
+  else g_choiceMasterMenu =3;
 }
 void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)     //choose function
 {
@@ -400,13 +390,12 @@ void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)     //choose function
               break;      
   }
 }
-void changePass()
+void changePass() //r
 {
   char a[7] ="" ;
   int i =0;
-  lcd.clear();
-  lcd.setCursor(2,0);
-  lcd.print("NEW PASSWORD");
+  displayLine(2,0,(char*)"NEW PASSWORD");
+  clearLine(1);
   lcd.setCursor(5,1);
   lcd.blink();
   while(i<7)
@@ -437,7 +426,8 @@ void changePass()
     }
   } 
   savepass(a);
-  thongBao((char*)"PASSWORD CHANGED");
+  displayLine(1, 0,(char*)"PASSWORD CHANGED");
+  clearLine(1);
   delay(2000);
   lcd.noBlink();
   master_Menu(1); 
@@ -445,27 +435,21 @@ void changePass()
 //.......................HAM CHANGE FINGERPRINT..................................
 void changeFingerMenu(char key)
 {
-  if(key == 'B')choiceFingerMenu -=1;
-  else if (key == 'C')choiceFingerMenu += 1;
+  if(key == 'B')g_choiceFingerMenu -=1;
+  else if (key == 'C')g_choiceFingerMenu += 1;
 int again6;
 again6 = setjmp(buf6);  
-  if(choiceFingerMenu == 1)
+  if(g_choiceFingerMenu == 1)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("> ADD FGPRINT");
-    lcd.setCursor(0, 1);
-    lcd.print("  REMOVE FGPRINT");
+    displayLine(0,0,(char*)"> ADD FGPRINT");
+    displayLine(0,1,(char*)"  REMOVE FGPRINT");
   }
-  else if(choiceFingerMenu == 2)
+  else if(g_choiceFingerMenu == 2)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);   
-    lcd.print("  ADD FGPRINT");
-    lcd.setCursor(0, 1);
-    lcd.print("> REMOVE FGPRINT");
-  }else if(choiceFingerMenu < 1)choiceFingerMenu =1;
-  else choiceFingerMenu =2;
+    displayLine(0,0,(char*)"  ADD FGPRINT");
+    displayLine(0,1,(char*)"> REMOVE FGPRINT");
+  }else if(g_choiceFingerMenu < 1)g_choiceFingerMenu =1;
+  else g_choiceFingerMenu =2;
 }
 void chooseFinger(uint8_t choice,uint16_t *lastCell)
 {
@@ -480,12 +464,11 @@ void chooseFinger(uint8_t choice,uint16_t *lastCell)
 void addFinger()
 {
   again:
-  uint8_t flag = 0;
-  int id=-1;  
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("SCAN FINGERPRINT");
+  int id=-1;
+  displayLine(0, 0,(char*)"SCAN FINGERPRINT");
+  clearLine(1);  
   char key;
+  flag = 0;
   while(key != '*' && key != 'A'&& id == -1 && flag == 0)
   { 
     uint8_t p = finger.getImage();
@@ -496,9 +479,8 @@ void addFinger()
         layvantay();
       }
       else{
-          lcd.clear();
-          lcd.setCursor(1, 0);
-          lcd.print("FGPRINT EXISTS");
+          displayLine(1, 0,(char*)"FGPRINT EXISTS");
+          clearLine(1);
           delay(1000);
           goto again;          
       }
@@ -506,27 +488,23 @@ void addFinger()
   }
   if(key == '*') 
   {
-    choiceFingerMenu = 1;
+    g_choiceFingerMenu = 1;
     longjmp(buf6,1);
   }
   else if(key =='A') longjmp(buf3,1);
-  lcd.clear();
-  lcd.setCursor(1,0);
-  lcd.print("ADD COMPLETELY");
+  displayLine(1, 0,(char*)"ADD COMPLETELY");
+  clearLine(1);
   delay(1000);
   changeFingerMenu(1);  
 
 }
 void removeFinger()
 {  
-   again:
+  again:
   uint8_t flag = 0;
-  int id=-1;  
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("SCAN FINGERPRINT");
-  lcd.setCursor(1, 1);
-  lcd.print("NEED TO DELECT");
+  int id=-1;
+  displayLine(0, 0,(char*)"SCAN FINGERPRINT");
+  displayLine(1, 1,(char*)"NEED TO DELECT");  
   char key;
   while(key != '*' && key != 'A'&& id == -1 && flag == 0)
   { 
@@ -534,15 +512,12 @@ void removeFinger()
     key = keypad.getKey(); 
     if (p == FINGERPRINT_OK){
       id = checkvantay(p);
-      if(id == -1 ){
-          lcd.clear();
-          lcd.setCursor(2, 0);
-          lcd.print("FINGERPRINT");
-          lcd.setCursor(1, 1);
-          lcd.print("DOESN'T EXIST");
-          delay(1000);
-          goto again;
-       
+      if(id == -1 )
+      {
+        displayLine(2, 0,(char*)"FINGERPRINT");
+        displayLine(1, 1,(char*)"DOESN'T EXIST"); 
+        delay(1000);
+        goto again;
       }
       else{
          xoaid(id);         
@@ -551,13 +526,12 @@ void removeFinger()
   }
   if(key == '*') 
   {
-    choiceFingerMenu = 1;
+    g_choiceFingerMenu = 1;
     longjmp(buf6,1);
   }
   else if(key =='A') longjmp(buf3,1);
-  lcd.clear();
-    lcd.setCursor(4,0);
-    lcd.print("REMOVED");
+  displayLine(4, 0,(char*)"REMOVED");
+  clearLine(1);
   delay(1000);
   changeFingerMenu(1);  
 
@@ -569,9 +543,9 @@ void changeFinger(uint16_t *lastCell)
   while(key != '*' && key != 'A')
   {
     key = keypad.getKey(); 
-    Handle_Key(key,&changeFingerMenu,&chooseFinger,choiceFingerMenu,lastCell);
+    Handle_Key(key,&changeFingerMenu,&chooseFinger,g_choiceFingerMenu,lastCell);
   }
-  choiceFingerMenu =1;
+  g_choiceFingerMenu =1;
   if(key == '*') 
   {
     master_Menu(1);
@@ -581,27 +555,21 @@ void changeFinger(uint16_t *lastCell)
 //-----------------------HAM CHANGE ID CARD--------------------------------------
 void changeID_Menu(char key)
 {
-  if(key == 'B')choiceChangeID -=1;
-  else if (key == 'C')choiceChangeID += 1;
+  if(key == 'B')g_choiceChangeID -=1;
+  else if (key == 'C')g_choiceChangeID += 1;
   int again5;
   again5 = setjmp(buf5);
-  if(choiceChangeID == 1)
+  if(g_choiceChangeID == 1)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("> ADD ID CARD");
-    lcd.setCursor(0, 1);
-    lcd.print("  REMOVE ID CARD");
+    displayLine(0, 0,(char*)"> ADD ID CARD");
+    displayLine(0, 1,(char*)"  REMOVE ID CARD"); 
   }
-  else if(choiceChangeID == 2)
+  else if(g_choiceChangeID == 2)
   {
-    lcd.clear();
-    lcd.setCursor(0,0);   
-    lcd.print("  ADD ID CARD");
-    lcd.setCursor(0, 1);
-    lcd.print("> REMOVE ID CARD");
-  }else if(choiceChangeID < 1)choiceChangeID =1;
-  else choiceChangeID =2;
+    displayLine(0, 0,(char*)"  ADD ID CARD");
+    displayLine(0, 1,(char*)"> REMOVE ID CARD");
+  }else if(g_choiceChangeID < 1)g_choiceChangeID =1;
+  else g_choiceChangeID =2;
 }
 uint16_t CompareID(uint8_t idCard[],uint16_t lastCell)
 {
@@ -629,17 +597,16 @@ void addID(uint16_t *lastCell)
   char key;
   uint8_t id[5] ="";
   uint16_t j = 11;     // vi tri luu gia tri dau tien cua UID
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("SCAN NEW ID CARD");
+  displayLine(1, 0,(char*)"SCAN NEW ID CARD");
+  clearLine(1);
   while(id[0]==0 && id[1]==0 && id[2]==0 && id[3]==0 && key != '*' && key !='A')
   {
-    read_Id_Card(id);
+    readIdCard(id);
     key = keypad.getKey(); 
   }
   if(key == '*')
   {
-    choiceChangeID = 1;
+    g_choiceChangeID = 1;
     longjmp(buf5,1);
   } 
   else if(key =='A')
@@ -650,7 +617,8 @@ void addID(uint16_t *lastCell)
   Serial.println(CompareID(id,*lastCell));
   if(CompareID(id,*lastCell)!= 0)
   {
-    thongBao((char*)"ID EXISTES");
+    displayLine(3, 0,(char*)"ID EXISTES");
+    clearLine(1);
     delay(1500);
     goto label1;
   }
@@ -679,9 +647,8 @@ void addID(uint16_t *lastCell)
     saveIndex(*lastCell+4); 
     readIndex(lastCell);
     lable2:
-    lcd.clear();
-    lcd.setCursor(1,0);
-    lcd.print("ADD COMPLETELY");
+    displayLine(1, 0,(char*)"ADD COMPLETELY");
+    clearLine(1);
     delay(1000);
     changeID_Menu(1);
   }
@@ -693,18 +660,15 @@ void removeID(uint16_t *lastCell)
   char key;
   uint8_t id[5] ="";
   uint16_t j = 11;     // vi tri luu gia tri dau tien cua UID
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("SCAN THE ID CARD");
-  lcd.setCursor(1,1);
-  lcd.print("NEED TO REMOVE");
+  displayLine(0, 0,(char*)"SCAN THE ID CARD");
+  displayLine(1, 1,(char*)"NEED TO REMOVE");
   while(id[0] == 0 && id[1] == 0 && id[2] == 0 && id[3] == 0 && key != '*' && key !='A')
   {
-    read_Id_Card(id);
+    readIdCard(id);
     key = keypad.getKey(); 
   }
   if(key == '*') {
-    choiceChangeID = 2;
+    g_choiceChangeID = 2;
     longjmp(buf5,1);
   }
   else if(key =='A')
@@ -715,17 +679,15 @@ void removeID(uint16_t *lastCell)
   uint16_t index = CompareID(id,*lastCell);
   if(index== 0)
   {
-    thongBao((char*)"ID DOESN'T EXIST");
+    displayLine(1, 0,(char*)"ID DOESN'T EXIST");
+    clearLine(1);
     delay(1500);
     goto label1;
   }
   else if(index == 7)
   {
-    lcd.clear();
-    lcd.setCursor(2,0);
-    lcd.print("CAN'T REMOVE");
-    lcd.setCursor(2,1);
-    lcd.print(" MASTER CARD");
+    displayLine(2, 0,(char*)"CAN'T REMOVE");
+    displayLine(2, 1,(char*)" MASTER CARD");
     delay(1500); 
     goto label1; 
   }
@@ -742,9 +704,8 @@ void removeID(uint16_t *lastCell)
       saveIndex(*lastCell);
       readIndex(lastCell);
     }
-    lcd.clear();
-    lcd.setCursor(4,0);
-    lcd.print("REMOVED");
+    displayLine(4, 0,(char*)"REMOVED");
+    clearLine(1);
     delay(1500);
     longjmp(buf5,1);
   }  
@@ -766,9 +727,9 @@ void changeIDCARD(uint16_t *lastCell)
   while(key != '*' && key != 'A')
   {
     key = keypad.getKey(); 
-    Handle_Key(key,&changeID_Menu,&choose_changeID,choiceChangeID,lastCell);
+    Handle_Key(key,&changeID_Menu,&choose_changeID,g_choiceChangeID,lastCell);
   }
-  choiceChangeID =1;
+  g_choiceChangeID =1;
   if(key == '*') 
   {
     master_Menu(1);
@@ -813,30 +774,32 @@ uint8_t getFingerprintID() { // Khai báo hàm getFingerprintID() trả về ki�
 }
 //lay van ta
 uint8_t layvantay() {
-  uint8_t flag = 0;
+  //uint8_t flag = 0;
   int p = -1;
   finger.getTemplateCount();
   uint8_t numFinger;
   numFinger=finger.templateCount;
   //doi van tay cua user
- 
-  // switch (p) {
-  //   case FINGERPRINT_OK:
-  //     Serial.println("Image taken");
-  //     break;
-  //   case FINGERPRINT_NOFINGER:
-  //     Serial.println(".");
-  //     break;
-  //   case FINGERPRINT_PACKETRECIEVEERR:
-  //     Serial.println("Communication error");
-  //     break;
-  //   case FINGERPRINT_IMAGEFAIL:
-  //     Serial.println("Imaging error");
-  //     break;
-  //   default:
-  //     Serial.println("Unknown error");
-  //     break;
-  // }
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Serial.println(".");
+      break;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      break;
+    case FINGERPRINT_IMAGEFAIL:
+      Serial.println("Imaging error");
+      break;
+    default:
+      Serial.println("Unknown error");
+      break;
+  }
+  }
   //xac nhan van tay
   p = finger.image2Tz(1);
   switch (p) {
@@ -859,7 +822,7 @@ uint8_t layvantay() {
       Serial.println("Unknown error");
       return p;
   }
-
+again:
   lcd.clear();
   lcd.setCursor(4,0);
   lcd.print("PUT OUT");
@@ -870,9 +833,8 @@ uint8_t layvantay() {
   }
 
   p = -1;
-  lcd.clear();
-  lcd.setCursor(1,0);
-  lcd.print("CONFIRM AGAIN");
+  displayLine(1, 0,(char*)"CONFIRM AGAIN");
+  clearLine(1);
   delay(2000);
   //doi van tay cua user
   while (p != FINGERPRINT_OK) {
@@ -928,7 +890,8 @@ uint8_t layvantay() {
     return p;
   } else if (p == FINGERPRINT_ENROLLMISMATCH) {
     Serial.println("Fingerprints did not match");
-    return p;
+    //return p;
+    goto again;
   } else {
     Serial.println("Unknown error");
     return p;
@@ -989,7 +952,7 @@ void setup()
   mfrc522.PCD_Init();
   pinMode(relay,OUTPUT);
   readpass(pass);
-  Read_MasterID(masterId);
+  readMasterID(masterId);
   readIndex(&lastCell);
   Serial.println(pass);
   Serial.println(lastCell);
@@ -1002,5 +965,5 @@ void loop() {
   int again3;
   again3 = setjmp(buf3);
   char key = keypad.getKey();
-  Handle_Key(key,&main_Menu,&choose_MainMenu,choiceMainMenu,&lastCell);
+  Handle_Key(key,&main_Menu,&choose_MainMenu,g_choiceMainMenu,&lastCell);
 }
