@@ -465,7 +465,8 @@ void scanID(uint16_t *lastCell)
     master_Menu(1);
     while(key != '*' && key != 'A')
     {
-      key = keypad.getKey(); 
+      key = keypad.getKey();
+      /*Execute master menu function*/ 
       Handle_Key(key,&master_Menu,&choose_MasterMenu,g_choiceMasterMenu,lastCell);
     }
     g_choiceMasterMenu = 1;
@@ -768,7 +769,8 @@ void changeFinger(uint16_t *lastCell)
   char key;
   while(key != '*' && key != 'A')
   {
-    key = keypad.getKey(); 
+    key = keypad.getKey();
+    /*Execute fingerprint menu function*/ 
     Handle_Key(key,&changeFingerMenu,&chooseFinger,g_choiceFingerMenu,lastCell);
   }
   g_choiceFingerMenu =1;
@@ -1003,6 +1005,7 @@ void changeIDCARD(uint16_t *lastCell)
   while(key != '*' && key != 'A')
   {
     key = keypad.getKey(); 
+    /*Execute change id menu function*/
     Handle_Key(key,&changeID_Menu,&choose_changeID,g_choiceChangeID,lastCell);
   }
   g_choiceChangeID =1;
@@ -1033,35 +1036,50 @@ int checkvantay(uint8_t p) {
   Serial.println(finger.confidence);
   return finger.fingerID;
 }
-
-uint8_t getFingerprintID() { // Khai báo hàm getFingerprintID() trả về kiểu dữ liệu uint8_t.
-  uint8_t p = finger.getImage(); // lấy hình ảnh của vân tay và gán kết quả trả về cho biến p.
+/*Don't use/
+/*
+*Function: getFingerprintID
+*Description: get fingerprint id
+*Input:None
+*Output: None
+*/
+uint8_t getFingerprintID() { 
+  /*get image of fingerprint and assign result to p */
+  uint8_t p = finger.getImage();
   switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image taken");// lấy hình ảnh vân tay thành công
+    /*get image successfully */
+      Serial.println("Image taken");
       break;
-    case FINGERPRINT_NOFINGER: // không phát hiện được vân tay
+    /*don't find fingerprint*/
+    case FINGERPRINT_NOFINGER:
       Serial.println("No finger detected");
       return p;
-    case FINGERPRINT_PACKETRECIEVEERR: // lỗi truyền
+    /*Error transmit*/
+    case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
       return p;
-    case FINGERPRINT_IMAGEFAIL: // lỗi chụp hình ảnh
+    /*Error take image*/
+    case FINGERPRINT_IMAGEFAIL:
       Serial.println("Imaging error");
       return p;
-    default: // có lỗi không xác định
+    default:
       Serial.println("Unknown error");
       return p;
   }
 }
-//lay van ta
+/*
+*Function: layvantay
+*Description: get fingerprint id
+*Input:None
+*Output: None
+*/
 uint8_t layvantay() {
-  //uint8_t flag = 0;
   int p = -1;
   finger.getTemplateCount();
   uint8_t numFinger;
   numFinger=finger.templateCount;
-  //doi van tay cua user
+  /*Wait user's fingerprint*/
   while (p != FINGERPRINT_OK) {
     p = finger.getImage();
   switch (p) {
@@ -1082,7 +1100,7 @@ uint8_t layvantay() {
       break;
   }
   }
-  //xac nhan van tay
+/*confirm fingerprint*/
   p = finger.image2Tz(1);
   switch (p) {
     case FINGERPRINT_OK:
@@ -1118,7 +1136,7 @@ again:
   displayLine(1, 0,(char*)"CONFIRM AGAIN");
   clearLine(1);
   delay(2000);
-  //doi van tay cua user
+  /*Wait user's fingerprint*/
   while (p != FINGERPRINT_OK) {
     p = finger.getImage();
     switch (p) {
@@ -1163,7 +1181,7 @@ again:
   }
   Serial.print("da tao room cho ");
   Serial.println(numFinger);
-  //tao model cho ID da chon
+/*generate model for chosen id*/
   p = finger.createModel();
   if (p == FINGERPRINT_OK) {
     Serial.println("Prints matched!");
@@ -1179,7 +1197,7 @@ again:
     return p;
   }
 
-  // luu ID vao model
+/*Save id into model*/
   p = finger.storeModel(++numFinger);
   if (p == FINGERPRINT_OK) {
     Serial.println("Stored!");
@@ -1199,7 +1217,14 @@ again:
     return p;
   }
 }
-// xoa van tay
+/*
+*Function: xoaid
+*Description: Remove fingerprint id
+*Input:
+*   id: fingerprint id which need to be removed
+*Output: None
+*/
+uin
 uint8_t xoaid(uint8_t id) {
   uint8_t p = -1;
   p = finger.deleteModel(id);
@@ -1247,5 +1272,6 @@ void loop() {
   int again3;
   again3 = setjmp(buf3);
   char key = keypad.getKey();
+  /*Execute main menu function*/
   Handle_Key(key,&main_Menu,&choose_MainMenu,g_choiceMainMenu,&lastCell);
 }
