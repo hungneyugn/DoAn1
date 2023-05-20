@@ -1,3 +1,9 @@
+/*
+*File: doan1.ino
+*Author: Nguyen Phi Hung, Le Van Thanh
+*Date: 14/03/2023
+*Description: 
+*/
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
 #include <string.h>
@@ -5,9 +11,9 @@
 #include <SPI.h>      
 #include <MFRC522.h>
 #include <setjmp.h>
-#include <Adafruit_Fingerprint.h> // thư viện vân tay
+#include <Adafruit_Fingerprint.h>
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&Serial2);
-//so byte eeprom luu
+/*Number of bytes saved in eeprom*/
 #define EEPROM_SIZE 200
 uint8_t id;
 uint8_t numFinger;
@@ -51,17 +57,23 @@ uint8_t masterId[5]="";            // Luu id cua the master
 void main_Menu(char);
 void choose_MainMenu(uint8_t) ;
 
-//-------------------------HAM SU DUNG CHUNG------------------------------------
-void turn_On_OFF()              //bat tat lcd //r
+/*
+*Function: turn_On_OFF
+*Description: Turn on or turn off lcd
+*Input: None
+*Output: None
+*/
+void turn_On_OFF()             
 {
+  /*Toggle state*/
   g_state =!g_state;
   Serial.println(g_state);
   int again2;
+  /*Global variable to choice main menu*/
   g_choiceMainMenu =1;
   again2 = setjmp(buf2);
   if(g_state == 1)
   {
-    // //turn on lcd
     lcd.init();       
     lcd.backlight();
     main_Menu(1);
@@ -72,19 +84,46 @@ void turn_On_OFF()              //bat tat lcd //r
     lcd.noBacklight();
   }
 }
-void clearLine(uint8_t line) //r
+
+/*
+*Function: clearLine
+*Description: clear a line of lcd
+*Input:
+*   line: one of two lines of lcd(0 or 1)
+*Output: None
+*/
+void clearLine(uint8_t line)
 {
   if(line == 0) lcd.setCursor(0,0);
   else lcd.setCursor(0,1);
+  /*Print 16 spaces*/
   lcd.print("                ");
 }
+
+/*
+*Function: displayLine
+*Description: display string on a line
+*Input:
+*   index: index start to print string on a line
+*   line: one of two lines of lcd(0 or 1)
+*   inform: string which we want to print on lcd
+*Output: None
+*/
 void displayLine(uint8_t index,uint8_t line,char* inform) //r
 {
   clearLine(line);
   lcd.setCursor(index,line);    
   lcd.print(inform);  
 }
-void delect(int i)              // xoa ki tu khi nhap mat khau//r
+
+/*
+*Function: delect
+*Description: delect char using keypad
+*Input:
+    i: index of char need to be delected
+*Output: None
+*/
+void delect(int i) 
 {
   if(i>=0 && i<=6)
   {
@@ -94,7 +133,15 @@ void delect(int i)              // xoa ki tu khi nhap mat khau//r
     lcd.setCursor(i+4,1);
   }
 }
-void savepass(char a[])      // luu mat khau vao eeprom//r
+
+/*
+*Function: savepass
+*Description: save pass using keypad
+*Input:
+    a: array save password
+*Output: None
+*/
+void savepass(char a[]) 
 {
    for(int i = 0 ; i<6;i++)
   {
@@ -103,15 +150,39 @@ void savepass(char a[])      // luu mat khau vao eeprom//r
     EEPROM.commit();
   }
 }
-void readpass(char a[])         // doc mat khau tu eeprom//r
+
+/*
+*Function: readpass
+*Description: read pass from eeprom
+*Input:
+    a: array save password
+*Output: None
+*/
+void readpass(char a[]) 
 {
   for(int i =0 ; i<6;i++)
   {
     a[i] = EEPROM.read(i+1);
   } 
 }
+
+/*
+*Function: Handle_Key
+*Description: processing when press control key
+*Input:
+    key: save key which is pressed
+    typeMenu : a function pointer to type of menu need to be operated
+    choose_menu: a function pointer to function choose one of options of that menu
+*Output: None
+*/
 void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t,uint16_t*),uint8_t choice,uint16_t* lastCell)
 {
+  /*
+  *key A: turn on or turn off lcd
+  *key B: surf up 
+  *key C: surf down
+  *key D: enter(choose the option) 
+  */  
   if(key == 'A')
   {
     turn_On_OFF();
@@ -119,19 +190,41 @@ void Handle_Key(char key,void(*typeMenu)(char),void(*choose_menu)(uint8_t,uint16
   else if((key == 'B'&& g_state == 1)||(key == 'C'&& g_state == 1))typeMenu(key);
   else if(key =='D'&& g_state == 1)choose_menu(choice, lastCell);
 }
-void readIndex(uint16_t *lastCell) //r
+
+/*
+*Function: readIndex
+*Description: read index of last cell used in eeprom
+*Input:
+    lastCell: Pointer to variable which save used last cell
+*Output: None
+*/
+void readIndex(uint16_t *lastCell)
 {
   *lastCell = EEPROM.read(0);
   Serial.print("lastcell: ");
   Serial.println(*lastCell);
 }
-void saveIndex(uint16_t lastCell) //r
+
+/*
+*Function: saveIndex
+*Description: save new value of last cell to eeprom
+*Input:
+    lastCell: value of index used last cell
+*Output: None
+*/
+void saveIndex(uint16_t lastCell)
 {
   EEPROM.write(0,lastCell);
   EEPROM.commit();
 }
-//-------------------------HAM MAIN MENU------------------------------------------
-void main_Menu(char key)             //mainscreen
+/*
+*Function: main_Menu
+*Description: display main menu on LCD
+*Input:
+    key: key which is pressed
+*Output: None
+*/
+void main_Menu(char key) 
 {
   if(key == 'B')g_choiceMainMenu -=1;
   else if (key == 'C')g_choiceMainMenu += 1;
@@ -151,9 +244,17 @@ void main_Menu(char key)             //mainscreen
     displayLine(0,1,(char*)"> FINGERPRINT");
   }else if(g_choiceMainMenu < 1)g_choiceMainMenu =1;
   else g_choiceMainMenu =3;
-
 }
-void choose_MainMenu(uint8_t choice,uint16_t *lastCell)     //choose function
+
+/*
+*Function: choose_MainMenu
+*Description: Execute option which user choose
+*Input:
+*   choice: the choice option which user choose
+*   lastCell: value of index used last cell
+*Output: None
+*/
+void choose_MainMenu(uint8_t choice,uint16_t *lastCell)
 {
   switch(choice)
   {
@@ -165,18 +266,41 @@ void choose_MainMenu(uint8_t choice,uint16_t *lastCell)     //choose function
               break;      
   }
 }
-void open_cabinet()             // mo tu
+/*
+*Function: open_cabinet
+*Description: function open cabinet
+*Input: None
+*Output: None
+*/
+void open_cabinet()          
 {
   digitalWrite(relay,HIGH);
 }
-void close_cabinet()            // dong tu
+/*
+*Function: close_cabinet
+*Description: function close cabinet
+*Input: None
+*Output: None
+*/
+void close_cabinet()           
 {
   digitalWrite(relay,LOW);
 }
-void readIdCard(uint8_t id[])//r
+
+/*
+*Function: readIdCard
+*Description: read id card
+*Input:
+*   id: a string save key of rfid card
+*Output: None
+*/
+void readIdCard(uint8_t id[])
 {
-  if ( ! mfrc522.PICC_IsNewCardPresent()) return; //Kiem tra xem co the quet hay khong
-  if ( ! mfrc522.PICC_ReadCardSerial()) return;  //Kiem tra xem doc the co thanh cong hay khong
+  /*check if the card is scanned or not*/
+  if ( ! mfrc522.PICC_IsNewCardPresent()) return;
+  /*check if reading card is successful or not*/
+  if ( ! mfrc522.PICC_ReadCardSerial()) return;
+  /*read key of card and save it in id argument*/
   for (int i = 0; i < 4; i++) 
   { 
     id[i] = mfrc522.uid.uidByte[i];    
@@ -191,7 +315,15 @@ void readIdCard(uint8_t id[])//r
   mfrc522.PICC_HaltA();  
   mfrc522.PCD_StopCrypto1();
 }
-void readMasterID(uint8_t id[])//r
+
+/*
+*Function: readMasterID
+*Description: read Master ID from EEPROM
+*Input:
+*   id: a string save key of rfid card
+*Output: None
+*/
+void readMasterID(uint8_t id[])
 {
   for(int i =0 ; i<4;i++)
   {
@@ -204,7 +336,15 @@ void readMasterID(uint8_t id[])//r
   }
   Serial.println();
 }
-void setMasterID(uint8_t id[])//r
+
+/*
+*Function: setMasterID
+*Description: save master id into EEPROM
+*Input:
+*   id: a string save key of rfid card
+*Output: None
+*/
+void setMasterID(uint8_t id[])
 {
   for(int i =0; i < 4;i++)
   {
@@ -212,7 +352,14 @@ void setMasterID(uint8_t id[])//r
     EEPROM.commit();
   }
 }
-void enterpass()                //Chuc nang 1: nhap mat khau//r
+
+/*
+*Function: enterpass
+*Description: enter password using keypad, display on lcd
+*Input: None
+*Output: None
+*/
+void enterpass()
 {
   again:
   char a[7] ="" ;
@@ -224,6 +371,10 @@ void enterpass()                //Chuc nang 1: nhap mat khau//r
   while(i<7)
   {
     char key = keypad.getKey();
+    /*
+    *key #: delect char
+    *key *: return previous menu
+    */    
     if(key == '#')
     {
       Serial.print(i);
@@ -231,6 +382,7 @@ void enterpass()                //Chuc nang 1: nhap mat khau//r
       i--;
       if(i < 0)i=0;
     }
+    /*if enough 6 characters, increase i to cancel the loop*/
     else if(key == 'D' && i == 6)
     { 
         i++;
@@ -239,6 +391,7 @@ void enterpass()                //Chuc nang 1: nhap mat khau//r
     {
       longjmp(buf2,1);
     }
+    /*password is only number characters*/
     else if (key && key!='A'&& key!='B'&& key!='C'&& key!='D'&& i<6 ) 
     {
       a[i]=key;
@@ -248,6 +401,7 @@ void enterpass()                //Chuc nang 1: nhap mat khau//r
     }
   }
   lcd.noBlink();
+  /*compare entered password and password readed from eeproom*/
   if(strcmp((char*)a,(char*)pass) == 0)
   {
     open_cabinet();
@@ -265,7 +419,14 @@ void enterpass()                //Chuc nang 1: nhap mat khau//r
   }
 
 }
-void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card//r
+
+/*
+*Function: scanID
+*Description: scan id card
+    lastCell: Pointer to variable which save used last cell
+*Output: None
+*/
+void scanID(uint16_t *lastCell) 
 {
   lable:
   char key;
@@ -321,7 +482,14 @@ void scanID(uint16_t *lastCell)                   //Chuc nang 2: scan id card//r
     longjmp(buf2,1);
   }
 }
-void scanfinger()                   //Chuc nang 3: quet van tay
+
+/*
+*Function: scanfinger
+*Description: Scan fingerprint
+*Input: None
+*Output: None
+*/
+void scanfinger()                   
 {
   char key;
   int id = -1;
@@ -354,7 +522,13 @@ void scanfinger()                   //Chuc nang 3: quet van tay
   close_cabinet();
   longjmp(buf2,1);
 }
-//-----------------------HAM MASTER MENU-----------------------------------------
+/*
+*Function: master_Menu
+*Description: display security opitons which only execute by master
+*Input:
+    key: key which is pressed
+*Output: None
+*/
 void master_Menu(char key)    
 {
   if(key == 'B')g_choiceMasterMenu -=1;
@@ -378,7 +552,16 @@ void master_Menu(char key)
   }else if(g_choiceMasterMenu < 1)g_choiceMasterMenu =1;
   else g_choiceMasterMenu =3;
 }
-void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)     //choose function
+
+/*
+*Function: choose_MasterMenu
+*Description: Execute option which master choose
+*Input:
+*   choice: the choice option which master choose
+*   lastCell: value of index used last cell
+*Output: None
+*/
+void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)
 {
   switch(choice)
   {
@@ -390,7 +573,14 @@ void choose_MasterMenu(uint8_t choice,uint16_t *lastCell)     //choose function
               break;      
   }
 }
-void changePass() //r
+
+/*
+*Function: changePass
+*Description: change password
+*Input: None
+*Output: None
+*/
+void changePass()
 {
   char a[7] ="" ;
   int i =0;
@@ -432,7 +622,14 @@ void changePass() //r
   lcd.noBlink();
   master_Menu(1); 
 }
-//.......................HAM CHANGE FINGERPRINT..................................
+
+/*
+*Function: changeFingerMenu
+*Description: display change opitons fingerprint
+*Input:
+    key: key which is pressed
+*Output: None
+*/
 void changeFingerMenu(char key)
 {
   if(key == 'B')g_choiceFingerMenu -=1;
@@ -451,6 +648,15 @@ again6 = setjmp(buf6);
   }else if(g_choiceFingerMenu < 1)g_choiceFingerMenu =1;
   else g_choiceFingerMenu =2;
 }
+
+/*
+*Function: chooseFinger
+*Description: Execute option which user choose in change fingerprint menu
+*Input:
+*   choice: the choice option which user choose
+*   lastCell: value of index used last cell
+*Output: None
+*/
 void chooseFinger(uint8_t choice,uint16_t *lastCell)
 {
   switch(choice)
@@ -461,6 +667,13 @@ void chooseFinger(uint8_t choice,uint16_t *lastCell)
             break; 
   }
 }
+
+/*
+*Function: addFinger
+*Description: add new fingerprint
+*Input: None
+*Output: None
+*/
 void addFinger()
 {
   again:
@@ -496,8 +709,14 @@ void addFinger()
   clearLine(1);
   delay(1000);
   changeFingerMenu(1);  
-
 }
+
+/*
+*Function: removeFinger
+*Description: remove fingerprint
+*Input: None
+*Output: None
+*/
 void removeFinger()
 {  
   again:
@@ -534,8 +753,15 @@ void removeFinger()
   clearLine(1);
   delay(1000);
   changeFingerMenu(1);  
-
 }
+
+/*
+*Function: changeFinger
+*Description: Function change fingerprint
+*Input: 
+*   lastCell: point to the last cell
+*Output: None
+*/
 void changeFinger(uint16_t *lastCell)
 {
   changeFingerMenu(1);
@@ -552,7 +778,14 @@ void changeFinger(uint16_t *lastCell)
   }
   else if(key =='A') longjmp(buf3,1);
 }
-//-----------------------HAM CHANGE ID CARD--------------------------------------
+
+/*
+*Function: changeID_Menu
+*Description: display change opitons ID card
+*Input:
+    key: key which is pressed
+*Output: None
+*/
 void changeID_Menu(char key)
 {
   if(key == 'B')g_choiceChangeID -=1;
@@ -571,10 +804,21 @@ void changeID_Menu(char key)
   }else if(g_choiceChangeID < 1)g_choiceChangeID =1;
   else g_choiceChangeID =2;
 }
+
+/*
+*Function: CompareID
+*Description: compare scanned id card with id card stored in EEPROM if it existed in EEPROM or not
+*Input:
+*   idCard: string save scanned id card
+*   lastCell: value of index used last cell
+*Output: 
+*   j: the last cell in four cells store scanned id card
+*/
 uint16_t CompareID(uint8_t idCard[],uint16_t lastCell)
 {
   uint8_t id[5] ="";
-  uint16_t j = 7;     // vi tri luu gia tri dau tien cua UID
+  /*index cell save the firt ID */
+  uint16_t j = 7;
   Serial.print("last cell in compare: ");
   Serial.println(lastCell);
   while(j < lastCell)
@@ -591,12 +835,20 @@ uint16_t CompareID(uint8_t idCard[],uint16_t lastCell)
   }
   return 0;
 }
+/*
+*Function: addID
+*Description: add new id
+*Input:
+*   lastCell: pointer points to index used last cell
+*Output: None
+*/
 void addID(uint16_t *lastCell)
 {
   label1:
   char key;
   uint8_t id[5] ="";
-  uint16_t j = 11;     // vi tri luu gia tri dau tien cua UID
+  /*index of the firt cell save id except master id*/
+  uint16_t j = 11;
   displayLine(1, 0,(char*)"SCAN NEW ID CARD");
   clearLine(1);
   while(id[0]==0 && id[1]==0 && id[2]==0 && id[3]==0 && key != '*' && key !='A')
@@ -627,7 +879,8 @@ void addID(uint16_t *lastCell)
       while(j < *lastCell)
       {
         int dem = 0;
-        while(dem < 4 && EEPROM.read(dem + j) == 255) dem++;  //kiem tra 4 o trong lien tiep
+        /*check 4 contiguous empy cell*/
+        while(dem < 4 && EEPROM.read(dem + j) == 255) dem++;
         if(dem == 4)
         {
           for(int i =0; i < 4;i++)
@@ -643,7 +896,6 @@ void addID(uint16_t *lastCell)
         EEPROM.write(i + *lastCell + 1, id[i]);
         EEPROM.commit();
       }
-    
     saveIndex(*lastCell+4); 
     readIndex(lastCell);
     lable2:
@@ -652,8 +904,15 @@ void addID(uint16_t *lastCell)
     delay(1000);
     changeID_Menu(1);
   }
- 
 }
+
+/*
+*Function: removeID
+*Description: remove id 
+*Input:
+*   lastCell: pointer points to index used last cell
+*Output: None
+*/
 void removeID(uint16_t *lastCell)
 {
   label1:
@@ -710,6 +969,15 @@ void removeID(uint16_t *lastCell)
     longjmp(buf5,1);
   }  
 }
+
+/*
+*Function: choose_changeID
+*Description: Execute option which user choose in change id menu
+*Input:
+*   choice: the choice option which user choose
+*   lastCell: pointer points to index used last cell
+*Output: None
+*/
 void choose_changeID(uint8_t choice,uint16_t *lastCell)
 {
   switch(choice)
@@ -720,6 +988,14 @@ void choose_changeID(uint8_t choice,uint16_t *lastCell)
             break; 
   }
 }
+
+/*
+*Function: changeIDCARD
+*Description: change id card
+*Input:
+*   lastCell: pointer points to index used last cell
+*Output: None
+*/
 void changeIDCARD(uint16_t *lastCell)
 {
   changeID_Menu(1);
@@ -736,7 +1012,13 @@ void changeIDCARD(uint16_t *lastCell)
   }
   else if(key =='A') longjmp(buf3,1);
 }
-//-------------------------------------------------------------//
+/*
+*Function: checkvantay
+*Description: check fingerprint if it existed or not
+*Input:
+*   p: 
+*Output: None
+*/
 int checkvantay(uint8_t p) {
   p = finger.image2Tz();
   if (p != FINGERPRINT_OK) return -1;
@@ -938,7 +1220,7 @@ uint8_t xoaid(uint8_t id) {
     return p;
   }
 }
-//-----------------------HAM CHINH-----------------------------------------------
+
 void setup() 
 {
   Serial2.begin(9600);
@@ -959,7 +1241,7 @@ void setup()
   Serial.print("SL Van tay da luu:");
   finger.getTemplateCount();
   numFinger = finger.templateCount;
-  Serial.println(numFinger); //In số lượng mẫu vân tay đã lưu trữ trên cảm biến
+  Serial.println(numFinger);
 }
 void loop() {
   int again3;
