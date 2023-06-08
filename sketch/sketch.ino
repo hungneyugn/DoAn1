@@ -12,7 +12,7 @@
 #include <MFRC522.h>
 #include <setjmp.h>
 #include <Adafruit_Fingerprint.h>
-Adafruit_Fingerprint finger = Adafruit_Fingerprint(&Serial2);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&Serial);
 /*Number of bytes saved in eeprom*/
 #define EEPROM_SIZE 200
 uint8_t id;
@@ -22,7 +22,7 @@ uint8_t numFinger;
 jmp_buf buf2;  // return main menu
 jmp_buf buf3;  // return dau chuong trinh khi nhan A
 jmp_buf buf4;  // return master menu
-jmp_buf buf5; //return  menu change id card
+jmp_buf buf5;  //return  menu change id card
 jmp_buf buf6;
 //Setup keypad 4x4
 #define ROW_NUM     4 // four rows
@@ -35,8 +35,8 @@ char keys[ROW_NUM][COLUMN_NUM] =
   {'*', '0', '#', 'D'}            // #: delect
 };                                // *: return
 
-byte pin_rows[ROW_NUM]      = {12,14,32,33}; 
-byte pin_column[COLUMN_NUM] = {25,26,27,4};   
+byte pin_rows[ROW_NUM]      = {12,14,27,26}; 
+byte pin_column[COLUMN_NUM] = {25,33,32,4};   
 Keypad keypad = Keypad( makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_NUM );
 //Setup lcd
 LiquidCrystal_I2C lcd(0x27,16,2);
@@ -45,15 +45,15 @@ uint8_t g_choiceMainMenu =1;
 uint8_t g_choiceMasterMenu =1;
 uint8_t g_choiceChangeID =1;
 uint8_t g_choiceFingerMenu = 1;
-bool g_state = 0;                 // trang thai lcd | 0: off ; 1: on
+bool g_state = 0;                 // State of LCD | 0: off ; 1: on
 uint8_t flag = 0;
-char pass[7]="";               // pass doc tu eeprom
-uint16_t lastCell;                // luu vi tri o nho chua du lieu cuoi cung
+char pass[7]="";                  // Pass read from EEPROM
+uint16_t lastCell;                // Save last used EEPROM cell
 //Setup RFID
 #define RST  13
 #define SDA  5
 MFRC522 mfrc522(SDA, RST);
-uint8_t masterId[5]="";            // Luu id cua the master
+uint8_t masterId[5]="";            // Save master id
 void main_Menu(char);
 void choose_MainMenu(uint8_t) ;
 
@@ -109,7 +109,7 @@ void clearLine(uint8_t line)
 *   inform: string which we want to print on lcd
 *Output: None
 */
-void displayLine(uint8_t index,uint8_t line,char* inform) //r
+void displayLine(uint8_t index,uint8_t line,char* inform) 
 {
   clearLine(line);
   lcd.setCursor(index,line);    
@@ -230,7 +230,7 @@ void main_Menu(char key)
   else if (key == 'C')g_choiceMainMenu += 1;
   if(g_choiceMainMenu == 1)
   {
-    displayLine(1,0,(char*)"CHOOSE A OPTION");
+    displayLine(0,0,(char*)"CHOOSE AN OPTION");
     displayLine(0,1,(char*)"> ENTER PASSWORD");
   }
   else if(g_choiceMainMenu == 2)
@@ -296,11 +296,14 @@ void close_cabinet()
 */
 void readIdCard(uint8_t id[])
 {
+  Serial.println("vo nhung khong co the 1");
   /*check if the card is scanned or not*/
   if ( ! mfrc522.PICC_IsNewCardPresent()) return;
   /*check if reading card is successful or not*/
+  Serial.println("vo nhung khong co the 2");
   if ( ! mfrc522.PICC_ReadCardSerial()) return;
   /*read key of card and save it in id argument*/
+   Serial.println("co the");
   for (int i = 0; i < 4; i++) 
   { 
     id[i] = mfrc522.uid.uidByte[i];    
@@ -417,7 +420,6 @@ void enterpass()
     delay(1000);
     goto again;
   }
-
 }
 
 /*
@@ -434,8 +436,10 @@ void scanID(uint16_t *lastCell)
   displayLine(1, 0, (char*)"PUT IN ID CARD");
   clearLine(1);
   lcd.setCursor(5,1);
+  Serial.println("Da Vao");
   while(idCard[0]==0 && idCard[1]==0 && idCard[2]==0 && idCard[3]==0 && key != '*' && key !='A')
   {
+    Serial.println("dang quet");
     readIdCard(idCard);
     key = keypad.getKey(); 
   }
@@ -690,7 +694,7 @@ void addFinger()
     if (p == FINGERPRINT_OK){
       id = checkvantay(p);
       if(id == -1 ){
-        layvantay();
+        getFingerprint();
       }
       else{
           displayLine(1, 0,(char*)"FGPRINT EXISTS");
@@ -740,7 +744,7 @@ void removeFinger()
         goto again;
       }
       else{
-         xoaid(id);         
+         delectFingerID(id);         
       }
     }
   }
@@ -940,7 +944,7 @@ void removeID(uint16_t *lastCell)
   uint16_t index = CompareID(id,*lastCell);
   if(index== 0)
   {
-    displayLine(1, 0,(char*)"ID DOESN'T EXIST");
+    displayLine(0, 0,(char*)"ID DOESN'T EXIST");
     clearLine(1);
     delay(1500);
     goto label1;
@@ -1069,12 +1073,12 @@ uint8_t getFingerprintID() {
   }
 }
 /*
-*Function: layvantay
+*Function: getFingerprint
 *Description: get fingerprint id
 *Input:None
 *Output: None
 */
-uint8_t layvantay() {
+uint8_t getFingerprint() {
   int p = -1;
   finger.getTemplateCount();
   uint8_t numFinger;
@@ -1218,14 +1222,13 @@ again:
   }
 }
 /*
-*Function: xoaid
+*Function: delectFingerID
 *Description: Remove fingerprint id
 *Input:
 *   id: fingerprint id which need to be removed
 *Output: None
 */
-uin
-uint8_t xoaid(uint8_t id) {
+uint8_t delectFingerID(uint8_t id) {
   uint8_t p = -1;
   p = finger.deleteModel(id);
   if (p == FINGERPRINT_OK) {
@@ -1248,12 +1251,11 @@ uint8_t xoaid(uint8_t id) {
 
 void setup() 
 {
-  Serial2.begin(9600);
+  Serial.begin(9600);
   finger.begin(57600);
   lcd.init();
   lcd.clear();
   lcd.noBacklight();
-  Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
   SPI.begin();    
   mfrc522.PCD_Init();
