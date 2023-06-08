@@ -2,7 +2,7 @@
 *File: doan1.ino
 *Author: Nguyen Phi Hung, Le Van Thanh
 *Date: 14/03/2023
-*Description: 
+*Description: This is program that use to make the options to open cabinet
 */
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
@@ -20,9 +20,9 @@ uint8_t numFinger;
 
 #define relay 2
 jmp_buf buf2;  // return main menu
-jmp_buf buf3;  // return dau chuong trinh khi nhan A
+jmp_buf buf3;  // return main menu (start state) when pressing key A
 jmp_buf buf4;  // return master menu
-jmp_buf buf5;  //return  menu change id card
+jmp_buf buf5;  // return menu change id card
 jmp_buf buf6;
 //Setup keypad 4x4
 #define ROW_NUM     4 // four rows
@@ -45,17 +45,21 @@ uint8_t g_choiceMainMenu =1;
 uint8_t g_choiceMasterMenu =1;
 uint8_t g_choiceChangeID =1;
 uint8_t g_choiceFingerMenu = 1;
-bool g_state = 0;                 // State of LCD | 0: off ; 1: on
+/*State of LCD | 0: off ; 1: on*/
+bool g_state = 0;                
 uint8_t flag = 0;
-char pass[7]="";                  // Pass read from EEPROM
-uint16_t lastCell;                // Save last used EEPROM cell
+/*Pass read from EEPROM*/
+char pass[7]="";  
+/*Save last used EEPROM cell*/
+uint16_t lastCell;                
 //Setup RFID
 #define RST  13
 #define SDA  5
 MFRC522 mfrc522(SDA, RST);
-uint8_t masterId[5]="";            // Save master id
+/*Save master id*/
+uint8_t masterId[5]="";            
 void main_Menu(char);
-void choose_MainMenu(uint8_t) ;
+void choose_MainMenu(uint8_t);
 
 /*
 *Function: turn_On_OFF
