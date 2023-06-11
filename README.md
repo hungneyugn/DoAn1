@@ -8,10 +8,10 @@
 `MCU` : ESP32 DevKit V1 (ESP-WROOM-32)
 
 `Peripheral`: 
-- LCD 16x02
-- RC522: RFID Reader
-- AS608: Fingerprint module
-- Keypad 4x4
+- [LCD 16x02](https://www.futurlec.com/LED/LCD16X2.shtml)
+- [RC522: RFID Reader](https://www.futurlec.com/LED/LCD16X2.shtml)
+- [AS608: Fingerprint module](https://tapit.vn/giao-tiep-cam-bien-nhan-dang-van-tay-as608-phan-1/)
+- [Keypad 4x4](https://esp32io.com/tutorials/esp32-keypad)
 
 `IDE` : Arduino IDE
 
