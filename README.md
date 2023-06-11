@@ -34,3 +34,16 @@ To display functions and easy to operate, we create some menus in program, inclu
    <img alt="menus" height="70%" width="70%" src="https://i.imgur.com/2NF0uaO.jpg">
 </picture>
 
+### Schematic
+
+<picture>
+   <img alt="schematic" height="70%" width="70%" src="https://i.imgur.com/xxChdGJ.png">
+</picture>
+
+`3D View`
+
+<picture>
+   <img alt="schematic" height="40%" width="40%" src="https://i.imgur.com/R4za0Jv.png">
+</picture>
+
+### Result
