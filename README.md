@@ -9,7 +9,7 @@
 
 `Peripheral`: 
 - [LCD 16x02](https://www.futurlec.com/LED/LCD16X2.shtml)
-- [RC522: RFID Reader](https://www.futurlec.com/LED/LCD16X2.shtml)
+- [RC522: RFID Reader](https://www.electronicwings.com/esp32/rfid-rc522-interfacing-with-esp32)
 - [AS608: Fingerprint module](https://tapit.vn/giao-tiep-cam-bien-nhan-dang-van-tay-as608-phan-1/)
 - [Keypad 4x4](https://esp32io.com/tutorials/esp32-keypad)
 
