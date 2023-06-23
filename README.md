@@ -46,5 +46,6 @@ To display functions and easy to operate, we create some menus in program, inclu
    <img alt="schematic" height="40%" width="40%" src="https://i.imgur.com/R4za0Jv.png">
 </picture>
 
+File code: sketch.ino in the folder sketch
 ### Result
 https://www.youtube.com/watch?v=i9Ew1jyVLMA
