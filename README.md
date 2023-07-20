@@ -13,7 +13,7 @@
 - [AS608: Fingerprint module](https://tapit.vn/giao-tiep-cam-bien-nhan-dang-van-tay-as608-phan-1/)
 - [Keypad 4x4](https://esp32io.com/tutorials/esp32-keypad)
 
-`IDE` : Arduino IDE
+`development` : Arduino IDE, EasyEDA
 
 `Features`:
 - Unlock with password.
